@@ -1,0 +1,81 @@
+"""
+main.py — Punto de entrada de la aplicación FastAPI.
+"""
+
+import logging
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+from ph_saas.config import settings
+from ph_saas.middleware.tenant import TenantMiddleware
+from ph_saas.routers import auth
+from ph_saas.scheduler import start_scheduler, stop_scheduler
+
+logging.basicConfig(
+    level=logging.DEBUG if settings.DEBUG else logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+
+# ── Lifespan: startup / shutdown ───────────────────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info(f"Iniciando {settings.APP_NAME} ({settings.ENVIRONMENT})")
+    start_scheduler()
+    yield
+    stop_scheduler()
+    logger.info(f"{settings.APP_NAME} detenido")
+
+
+# ── Instancia de la aplicación ─────────────────────────────────────────────────
+
+app = FastAPI(
+    title=settings.APP_NAME,
+    version="1.0.0",
+    description="Sistema de administración de conjuntos residenciales — SaaS",
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
+    lifespan=lifespan,
+)
+
+
+# ── Middlewares ────────────────────────────────────────────────────────────────
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"] if settings.DEBUG else [settings.APP_URL],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Tenant middleware — SIEMPRE después de CORS
+app.add_middleware(TenantMiddleware)
+
+
+# ── Archivos estáticos ─────────────────────────────────────────────────────────
+
+app.mount("/static", StaticFiles(directory="ph_saas/static"), name="static")
+
+
+# ── Routers ────────────────────────────────────────────────────────────────────
+
+app.include_router(auth.router)
+
+# Los demás routers se agregan en Fases 1-4:
+# from ph_saas.routers import conjuntos, propiedades, cuotas, pagos, cartera, reportes, suscripciones, internal
+# app.include_router(conjuntos.router)
+# app.include_router(propiedades.router)
+# ...
+
+
+# ── Health check ───────────────────────────────────────────────────────────────
+
+@app.get("/health", tags=["health"])
+def health():
+    return {"status": "ok", "app": settings.APP_NAME}

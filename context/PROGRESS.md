@@ -8,20 +8,20 @@
 
 **Fase:** Planificación completada — lista para iniciar Fase 0
 **Versión del documento de planificación:** v2.5
-**Última actualización:** Marzo 2026
+**Última actualización:** Marzo 2026 — Fase 0 en progreso (código base creado, pendiente: GitHub, venv, ejecutar migración SQL, Railway deploy)
 
 ---
 
 ## Fase 0 — Fundamentos (Semana 1-2)
 
 - [ ] Crear repositorio en GitHub
-- [ ] Configurar entorno Python local (venv, dependencias)
-- [ ] Crear proyecto en Supabase (PostgreSQL + Auth)
-- [ ] Crear todas las tablas en la base de datos
-- [ ] Configurar FastAPI básico con conexión a Supabase
-- [ ] Login funcional con Supabase Auth
-- [ ] `dependencies.py` — `get_current_user`, `require_role` operativos
-- [ ] `middleware/tenant.py` — inyección de `conjunto_id` y verificación suscripción ⚠️
+- [ ] Configurar entorno Python local (venv, dependencias del requirements.txt)
+- [x] Crear proyecto en Supabase (PostgreSQL + Auth) ← credenciales en .env
+- [x] Crear todas las tablas en la base de datos ← `migrations/001_initial_schema.sql` listo para ejecutar en Supabase
+- [x] Configurar FastAPI básico con conexión a Supabase ← `main.py`, `config.py`, `database.py`
+- [x] Login funcional con Supabase Auth ← `routers/auth.py`
+- [x] `dependencies.py` — `get_current_user`, `require_role` operativos
+- [x] `middleware/tenant.py` — inyección de `conjunto_id` y verificación suscripción ⚠️
 - [ ] Deploy inicial en Railway
 
 ---
@@ -77,6 +77,33 @@
 | `RULES.md` | ✅ Creado |
 | `CONVENTIONS.md` | ✅ Creado |
 | `PROGRESS.md` | ✅ Creado |
+| `requirements.txt` | ✅ Creado |
+| `.env.example` | ✅ Creado |
+| `.gitignore` | ✅ Actualizado |
+| `migrations/001_initial_schema.sql` | ✅ Creado — pendiente ejecutar en Supabase |
+| `ph_saas/__init__.py` | ✅ Creado |
+| `ph_saas/main.py` | ✅ Creado |
+| `ph_saas/config.py` | ✅ Creado |
+| `ph_saas/database.py` | ✅ Creado |
+| `ph_saas/scheduler.py` | ✅ Creado (job diario medianoche) |
+| `ph_saas/dependencies.py` | ✅ Creado (`get_current_user`, `require_role`, `require_superadmin`) |
+| `ph_saas/errors.py` | ✅ Creado (`ErrorMsg` + helpers `http_4xx`) |
+| `ph_saas/middleware/tenant.py` | ✅ Creado — aislamiento tenant + verificación suscripción |
+| `ph_saas/models/base.py` | ✅ Creado |
+| `ph_saas/models/conjunto.py` | ✅ Creado |
+| `ph_saas/models/usuario.py` | ✅ Creado |
+| `ph_saas/models/usuario_conjunto.py` | ✅ Creado |
+| `ph_saas/models/suscripcion.py` | ✅ Creado |
+| `ph_saas/models/propiedad.py` | ✅ Creado |
+| `ph_saas/models/configuracion_conjunto.py` | ✅ Creado |
+| `ph_saas/models/cuota.py` | ✅ Creado |
+| `ph_saas/models/pago.py` | ✅ Creado |
+| `ph_saas/models/pago_detalle.py` | ✅ Creado |
+| `ph_saas/models/saldo_a_favor.py` | ✅ Creado |
+| `ph_saas/models/movimiento_contable.py` | ✅ Creado |
+| `ph_saas/models/proceso_log.py` | ✅ Creado |
+| `ph_saas/models/cuota_interes_log.py` | ✅ Creado |
+| `ph_saas/routers/auth.py` | ✅ Creado (`/auth/login`, `/auth/logout`, `/auth/me`) |
 
 ---
 
