@@ -8,7 +8,7 @@
 
 **Fase:** Fase 0 completada ✅ — lista para iniciar Fase 1
 **Versión del documento de planificación:** v2.5
-**Última actualización:** Marzo 2026 — Fase 0 completada. Servidor levanta en http://localhost:8000. Deploy Railway pendiente (opcional antes de Fase 1).
+**Última actualización:** Marzo 2026 — Fase 0 100% completa. Servidor online en Railway ✅ y local en http://localhost:8000 ✅
 
 ---
 

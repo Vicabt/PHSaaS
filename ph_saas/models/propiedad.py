@@ -4,9 +4,15 @@ models/propiedad.py — Tabla: propiedad
 
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 from sqlalchemy import UUID, Boolean, DateTime, Enum, ForeignKey, Index, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ph_saas.models.base import Base
+
+if TYPE_CHECKING:
+    from ph_saas.models.conjunto import Conjunto
+    from ph_saas.models.usuario import Usuario
+    from ph_saas.models.cuota import Cuota
 
 
 class Propiedad(Base):
