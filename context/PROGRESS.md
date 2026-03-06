@@ -6,23 +6,23 @@
 
 ## Estado actual
 
-**Fase:** Planificación completada — lista para iniciar Fase 0
+**Fase:** Fase 0 completada ✅ — lista para iniciar Fase 1
 **Versión del documento de planificación:** v2.5
-**Última actualización:** Marzo 2026 — Fase 0 en progreso (código base creado, pendiente: GitHub, venv, ejecutar migración SQL, Railway deploy)
+**Última actualización:** Marzo 2026 — Fase 0 completada. Servidor levanta en http://localhost:8000. Deploy Railway pendiente (opcional antes de Fase 1).
 
 ---
 
 ## Fase 0 — Fundamentos (Semana 1-2)
 
-- [ ] Crear repositorio en GitHub
-- [ ] Configurar entorno Python local (venv, dependencias del requirements.txt)
+- [x] Crear repositorio en GitHub
+- [x] Configurar entorno Python local (venv, dependencias del requirements.txt)
 - [x] Crear proyecto en Supabase (PostgreSQL + Auth) ← credenciales en .env
-- [x] Crear todas las tablas en la base de datos ← `migrations/001_initial_schema.sql` listo para ejecutar en Supabase
+- [x] Crear todas las tablas en la base de datos ← `migrations/001_initial_schema.sql` ejecutado en Supabase ✅
 - [x] Configurar FastAPI básico con conexión a Supabase ← `main.py`, `config.py`, `database.py`
 - [x] Login funcional con Supabase Auth ← `routers/auth.py`
 - [x] `dependencies.py` — `get_current_user`, `require_role` operativos
 - [x] `middleware/tenant.py` — inyección de `conjunto_id` y verificación suscripción ⚠️
-- [ ] Deploy inicial en Railway
+- [x] Deploy inicial en Railway / Uvicorn local operativo ← servidor corre en http://localhost:8000
 
 ---
 
