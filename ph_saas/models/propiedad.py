@@ -1,6 +1,7 @@
 """
 models/propiedad.py — Tabla: propiedad
 """
+from __future__ import annotations
 
 import uuid
 from datetime import datetime

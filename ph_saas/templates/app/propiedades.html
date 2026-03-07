@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Propiedades — PH SaaS{% endblock %}
+{% block heading %}Propiedades / Unidades{% endblock %}
+
+{% block content %}
+<div x-data="{
+  showCreate: false,
+  editId: null,
+  editNumero: '',
+  editEstado: '',
+  deleteId: null,
+  openEdit(id, numero, estado) {
+    this.editId = id;
+    this.editNumero = numero;
+    this.editEstado = estado;
+  },
+  openDelete(id) { this.deleteId = id; },
+}">
+
+  <!-- Toolbar -->
+  <div class="flex items-center justify-between mb-6">
+    <p class="text-sm text-gray-500">{{ propiedades|length }} unidad(es) — {{ conjunto_nombre }}</p>
+    <button @click="showCreate = true"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition shadow-sm">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Nueva unidad
+    </button>
+  </div>
+
+  <!-- Tabla -->
+  <div class="bg-white rounded-xl shadow-sm overflow-auto">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">Numero / Apto</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">Propietario</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">Estado</th>
+          <th class="px-4 py-3 text-right font-semibold text-gray-600">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for p in propiedades %}
+        <tr class="hover:bg-gray-50 transition">
+          <td class="px-4 py-3 font-medium text-gray-800">{{ p.numero_apartamento }}</td>
+          <td class="px-4 py-3 text-gray-600">{{ p.propietario or '—' }}</td>
+          <td class="px-4 py-3">
+            <span class="px-2 py-0.5 rounded-full text-xs font-medium
+              {% if p.estado == 'Activo' %}bg-green-100 text-green-700
+              {% else %}bg-gray-100 text-gray-600{% endif %}">
+              {{ p.estado }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-right space-x-2">
+            <button @click="openEdit('{{ p.id }}', '{{ p.numero_apartamento|e }}', '{{ p.estado }}')"
+                    class="text-indigo-600 hover:text-indigo-800 text-xs font-medium">Editar</button>
+            <button @click="openDelete('{{ p.id }}')"
+                    class="text-red-500 hover:text-red-700 text-xs font-medium">Eliminar</button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="px-4 py-8 text-center text-gray-400">No hay unidades registradas</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+
+  <!-- Modal Crear -->
+  <div x-show="showCreate" x-cloak
+       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4"
+       @keydown.escape.window="showCreate = false">
+    <div @click.outside="showCreate = false"
+         class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+      <h2 class="text-base font-semibold text-gray-800 mb-4">Nueva unidad</h2>
+      <form method="post" action="/panel/app/propiedades/crear" class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Numero / Identificador *</label>
+          <input name="numero_apartamento" type="text" required
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                 placeholder="Ej: 101, Apto 5B" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Estado</label>
+          <select name="estado"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="Activo">Activo</option>
+            <option value="Inactivo">Inactivo</option>
+          </select>
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="button" @click="showCreate = false"
+                  class="flex-1 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 transition">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition">
+            Crear
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- Modal Editar -->
+  <div x-show="editId !== null" x-cloak
+       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4"
+       @keydown.escape.window="editId = null">
+    <div @click.outside="editId = null"
+         class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+      <h2 class="text-base font-semibold text-gray-800 mb-4">Editar unidad</h2>
+      <form method="post" :action="`/panel/app/propiedades/${editId}/editar`" class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Numero / Identificador *</label>
+          <input name="numero_apartamento" type="text" required x-model="editNumero"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Estado</label>
+          <select name="estado" x-model="editEstado"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="Activo">Activo</option>
+            <option value="Inactivo">Inactivo</option>
+          </select>
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="button" @click="editId = null"
+                  class="flex-1 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 transition">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition">
+            Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- Modal Eliminar -->
+  <div x-show="deleteId !== null" x-cloak
+       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4"
+       @keydown.escape.window="deleteId = null">
+    <div @click.outside="deleteId = null"
+         class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+      <h2 class="text-base font-semibold text-gray-800 mb-2">Confirmar eliminacion</h2>
+      <p class="text-sm text-gray-500 mb-5">La unidad sera marcada como eliminada.</p>
+      <form method="post" :action="`/panel/app/propiedades/${deleteId}/eliminar`">
+        <div class="flex gap-3">
+          <button type="button" @click="deleteId = null"
+                  class="flex-1 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 transition">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition">
+            Eliminar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

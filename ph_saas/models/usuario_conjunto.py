@@ -2,14 +2,21 @@
 models/usuario_conjunto.py — Tabla: usuario_conjunto
 Relación N:M entre usuario y conjunto con rol asignado.
 """
-
-import uuid
-from datetime import datetime
-from sqlalchemy import UUID, Boolean, DateTime, Enum, ForeignKey, Index
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from ph_saas.models.base import Base
+from __future__ import annotations
 
 import enum
+import uuid
+from datetime import datetime
+from typing import TYPE_CHECKING
+
+from sqlalchemy import UUID, Boolean, DateTime, Enum, ForeignKey, Index
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from ph_saas.models.base import Base
+
+if TYPE_CHECKING:
+    from ph_saas.models.usuario import Usuario
+    from ph_saas.models.conjunto import Conjunto
 
 
 class RolConjunto(str, enum.Enum):

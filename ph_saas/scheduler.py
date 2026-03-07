@@ -25,7 +25,7 @@ def _marcar_cuotas_vencidas():
     try:
         # Importación diferida para evitar circular imports en arranque
         from ph_saas.database import SessionLocal
-        from ph_saas.services.cuota_service import marcar_cuotas_vencidas  # Fase 2
+        from ph_saas.services.cuota_service import marcar_cuotas_vencidas  # type: ignore[import]  # Fase 2
 
         db = SessionLocal()
         try:

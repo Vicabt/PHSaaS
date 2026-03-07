@@ -2,6 +2,7 @@
 models/cuota_interes_log.py — Tabla: cuota_interes_log
 Idempotencia para CALCULO_INTERESES: si existe (cuota_id, mes_ejecucion) → no ejecutar.
 """
+from __future__ import annotations
 
 import uuid
 from datetime import datetime

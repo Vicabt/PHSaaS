@@ -2,6 +2,7 @@
 models/configuracion_conjunto.py — Tabla: configuracion_conjunto
 Una fila por conjunto. PK = conjunto_id.
 """
+from __future__ import annotations
 
 import uuid
 from datetime import datetime

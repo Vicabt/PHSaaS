@@ -1,6 +1,7 @@
 """
 models/conjunto.py — Tabla: conjunto
 """
+from __future__ import annotations
 
 import uuid
 from datetime import datetime

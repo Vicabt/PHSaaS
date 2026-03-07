@@ -2,6 +2,7 @@
 models/movimiento_contable.py — Tabla: movimiento_contable
 referencia_id es polimórfico — sin FK en BD. Validar en código que exista.
 """
+from __future__ import annotations
 
 import uuid
 from datetime import date, datetime

@@ -2,6 +2,7 @@
 models/pago_detalle.py — Tabla: pago_detalle
 Invariante obligatoria: monto_aplicado = monto_a_interes + monto_a_capital
 """
+from __future__ import annotations
 
 import uuid
 from datetime import datetime

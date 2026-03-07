@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}Conjuntos — PH SaaS{% endblock %}
+{% block heading %}Conjuntos residenciales{% endblock %}
+
+{% block content %}
+<div x-data="{
+  showCreate: false,
+  editId: null,
+  editNombre: '',
+  editNit: '',
+  editDireccion: '',
+  editCiudad: '',
+  deleteId: null,
+  openEdit(id, nombre, nit, direccion, ciudad) {
+    this.editId = id;
+    this.editNombre = nombre;
+    this.editNit = nit;
+    this.editDireccion = direccion;
+    this.editCiudad = ciudad;
+  },
+  openDelete(id) { this.deleteId = id; },
+  closeAll() { this.showCreate = false; this.editId = null; this.deleteId = null; }
+}">
+
+  <!-- Toolbar -->
+  <div class="flex items-center justify-between mb-6">
+    <p class="text-sm text-gray-500">{{ conjuntos|length }} conjunto(s) registrado(s)</p>
+    <button @click="showCreate = true"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition shadow-sm">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Nuevo conjunto
+    </button>
+  </div>
+
+  <!-- Tabla -->
+  <div class="bg-white rounded-xl shadow-sm overflow-auto">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">Nombre</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">NIT</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">Ciudad</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">Suscripcion</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">Vencimiento</th>
+          <th class="px-4 py-3 text-right font-semibold text-gray-600">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for c in conjuntos %}
+        {% set sus = sus_map.get(c.id) %}
+        <tr class="hover:bg-gray-50 transition">
+          <td class="px-4 py-3 font-medium text-gray-800">{{ c.nombre }}</td>
+          <td class="px-4 py-3 text-gray-600">{{ c.nit or '—' }}</td>
+          <td class="px-4 py-3 text-gray-600">{{ c.ciudad or '—' }}</td>
+          <td class="px-4 py-3">
+            {% if sus %}
+              <span class="px-2 py-0.5 rounded-full text-xs font-medium
+                {% if sus.estado == 'Activo' %}bg-green-100 text-green-700
+                {% elif sus.estado == 'Suspendido' %}bg-red-100 text-red-700
+                {% else %}bg-yellow-100 text-yellow-700{% endif %}">
+                {{ sus.estado }}
+              </span>
+            {% else %}
+              <span class="text-gray-400 text-xs">Sin suscripcion</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-gray-600 text-xs">
+            {{ sus.fecha_vencimiento.strftime('%d/%m/%Y') if sus and sus.fecha_vencimiento else '—' }}
+          </td>
+          <td class="px-4 py-3 text-right space-x-2">
+            <button
+              @click="openEdit('{{ c.id }}', '{{ c.nombre|e }}', '{{ (c.nit or '')|e }}', '{{ (c.direccion or '')|e }}', '{{ (c.ciudad or '')|e }}')"
+              class="text-indigo-600 hover:text-indigo-800 text-xs font-medium transition">Editar</button>
+            <button
+              @click="openDelete('{{ c.id }}')"
+              class="text-red-500 hover:text-red-700 text-xs font-medium transition">Eliminar</button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="px-4 py-8 text-center text-gray-400">No hay conjuntos registrados</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+
+  <!-- Modal Crear -->
+  <div x-show="showCreate" x-cloak
+       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4"
+       @keydown.escape.window="showCreate = false">
+    <div @click.outside="showCreate = false"
+         class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+      <h2 class="text-base font-semibold text-gray-800 mb-4">Nuevo conjunto</h2>
+      <form method="post" action="/panel/sa/conjuntos/crear" class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Nombre *</label>
+          <input name="nombre" type="text" required
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">NIT</label>
+          <input name="nit" type="text"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Direccion</label>
+          <input name="direccion" type="text"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Ciudad</label>
+          <input name="ciudad" type="text"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="button" @click="showCreate = false"
+                  class="flex-1 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 transition">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition">
+            Crear
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- Modal Editar -->
+  <div x-show="editId !== null" x-cloak
+       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4"
+       @keydown.escape.window="editId = null">
+    <div @click.outside="editId = null"
+         class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+      <h2 class="text-base font-semibold text-gray-800 mb-4">Editar conjunto</h2>
+      <form method="post" :action="`/panel/sa/conjuntos/${editId}/editar`" class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Nombre *</label>
+          <input name="nombre" type="text" required x-model="editNombre"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">NIT</label>
+          <input name="nit" type="text" x-model="editNit"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Direccion</label>
+          <input name="direccion" type="text" x-model="editDireccion"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Ciudad</label>
+          <input name="ciudad" type="text" x-model="editCiudad"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="button" @click="editId = null"
+                  class="flex-1 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 transition">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition">
+            Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- Modal Eliminar -->
+  <div x-show="deleteId !== null" x-cloak
+       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4"
+       @keydown.escape.window="deleteId = null">
+    <div @click.outside="deleteId = null"
+         class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+      <h2 class="text-base font-semibold text-gray-800 mb-2">Confirmar eliminacion</h2>
+      <p class="text-sm text-gray-500 mb-5">Esta accion desactivara el conjunto. No se puede deshacer facilmente.</p>
+      <form method="post" :action="`/panel/sa/conjuntos/${deleteId}/eliminar`">
+        <div class="flex gap-3">
+          <button type="button" @click="deleteId = null"
+                  class="flex-1 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 transition">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition">
+            Eliminar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

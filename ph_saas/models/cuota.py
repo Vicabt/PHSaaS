@@ -2,13 +2,22 @@
 models/cuota.py — Tabla: cuota
 interes_generado es acumulativo — NUNCA sobreescribir, solo sumar.
 """
+from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
+
 from sqlalchemy import UUID, Boolean, Date, DateTime, Enum, ForeignKey, Index, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from ph_saas.models.base import Base
+
+if TYPE_CHECKING:
+    from ph_saas.models.propiedad import Propiedad
+    from ph_saas.models.pago_detalle import PagoDetalle
+    from ph_saas.models.cuota_interes_log import CuotaInteresLog
 
 
 class Cuota(Base):

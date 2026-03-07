@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from ph_saas.config import settings
 from ph_saas.middleware.tenant import TenantMiddleware
-from ph_saas.routers import auth
+from ph_saas.routers import auth, conjuntos, propiedades, suscripciones, views
 from ph_saas.scheduler import start_scheduler, stop_scheduler
 
 logging.basicConfig(
@@ -25,7 +25,15 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import asyncio
+    from ph_saas.dependencies import _get_jwks
     logger.info(f"Iniciando {settings.APP_NAME} ({settings.ENVIRONMENT})")
+    # Prefetch JWKS en thread para cachear antes del primer request
+    try:
+        await asyncio.to_thread(_get_jwks)
+        logger.info("JWKS precargado correctamente")
+    except Exception as e:
+        logger.warning(f"No se pudo precargar JWKS: {e}")
     start_scheduler()
     yield
     stop_scheduler()
@@ -66,11 +74,15 @@ app.mount("/static", StaticFiles(directory="ph_saas/static"), name="static")
 # ── Routers ────────────────────────────────────────────────────────────────────
 
 app.include_router(auth.router)
+app.include_router(conjuntos.router)
+app.include_router(propiedades.router)
+app.include_router(suscripciones.router)
+app.include_router(views.router)
 
-# Los demás routers se agregan en Fases 1-4:
-# from ph_saas.routers import conjuntos, propiedades, cuotas, pagos, cartera, reportes, suscripciones, internal
-# app.include_router(conjuntos.router)
-# app.include_router(propiedades.router)
+# Los demás routers se agregan en Fases 2-4:
+# from ph_saas.routers import cuotas, pagos, cartera, reportes, internal
+# app.include_router(cuotas.router)
+# app.include_router(pagos.router)
 # ...
 
 

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Configuracion — PH SaaS{% endblock %}
+{% block heading %}Configuracion del conjunto{% endblock %}
+
+{% block content %}
+<div class="max-w-xl">
+  <p class="text-sm text-gray-500 mb-6">{{ conjunto_nombre }}</p>
+
+  {% if config %}
+  <div class="bg-white rounded-xl shadow-sm p-6">
+    <form method="post" action="/panel/app/configuracion" class="space-y-5">
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="valor_cuota_estandar">
+          Valor cuota estandar (COP)
+        </label>
+        <input
+          id="valor_cuota_estandar"
+          name="valor_cuota_estandar"
+          type="number"
+          step="0.01"
+          min="0"
+          required
+          value="{{ config.valor_cuota_estandar }}"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <p class="text-xs text-gray-400 mt-1">Monto base de cuota de administracion mensual</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="dia_notificacion_mora">
+          Dia de notificacion de mora
+        </label>
+        <input
+          id="dia_notificacion_mora"
+          name="dia_notificacion_mora"
+          type="number"
+          min="1"
+          max="28"
+          required
+          value="{{ config.dia_notificacion_mora }}"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <p class="text-xs text-gray-400 mt-1">Dia del mes en que se notifica mora a propietarios (1–28)</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1" for="tasa_interes_mora">
+          Tasa de interes por mora (% mensual)
+        </label>
+        <input
+          id="tasa_interes_mora"
+          name="tasa_interes_mora"
+          type="number"
+          step="0.01"
+          min="0"
+          max="100"
+          required
+          value="{{ config.tasa_interes_mora }}"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <p class="text-xs text-gray-400 mt-1">Porcentaje mensual aplicado sobre saldo en mora</p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <input
+          id="permitir_interes"
+          name="permitir_interes"
+          type="checkbox"
+          value="on"
+          {% if config.permitir_interes %}checked{% endif %}
+          class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+        />
+        <label class="text-sm font-medium text-gray-700" for="permitir_interes">
+          Activar cobro de interes por mora
+        </label>
+      </div>
+
+      <div class="pt-2 border-t border-gray-100">
+        <button
+          type="submit"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-6 py-2.5 rounded-lg transition shadow-sm">
+          Guardar configuracion
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {% else %}
+  <div class="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl px-4 py-4 text-sm">
+    No se encontro configuracion para este conjunto. Contacte al administrador.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

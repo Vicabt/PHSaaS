@@ -2,6 +2,7 @@
 models/usuario.py — Tabla: usuario
 El id es el mismo UUID de Supabase Auth.
 """
+from __future__ import annotations
 
 import uuid
 from datetime import datetime

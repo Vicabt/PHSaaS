@@ -3,6 +3,8 @@ database.py — Configuración de SQLAlchemy + sesión de base de datos.
 Fuerza timezone America/Bogota en cada conexión para evitar desfase UTC.
 """
 
+from typing import Generator
+
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker, Session
 from ph_saas.config import settings
@@ -34,7 +36,7 @@ SessionLocal = sessionmaker(
 
 
 # ── Dependencia FastAPI: get_db() ──────────────────────────────────────────────
-def get_db() -> Session:
+def get_db() -> Generator[Session, None, None]:
     """
     Generador de sesión de base de datos para inyección de dependencias.
     Uso en routers:

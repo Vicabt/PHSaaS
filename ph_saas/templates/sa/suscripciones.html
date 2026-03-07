@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Suscripciones — PH SaaS{% endblock %}
+{% block heading %}Gestion de suscripciones{% endblock %}
+
+{% block content %}
+<div x-data="{
+  createId: null,
+  createNombre: '',
+  pagarId: null,
+  suspenderId: null,
+  activarId: null,
+  openCreate(id, nombre) { this.createId = id; this.createNombre = nombre; },
+  openPagar(id) { this.pagarId = id; },
+}">
+
+  <!-- Toolbar -->
+  <div class="flex items-center justify-between mb-6">
+    <p class="text-sm text-gray-500">{{ conjuntos|length }} conjunto(s)</p>
+  </div>
+
+  <!-- Tabla -->
+  <div class="bg-white rounded-xl shadow-sm overflow-auto">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">Conjunto</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">Estado</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">Vencimiento</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">Valor mensual</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">Observaciones</th>
+          <th class="px-4 py-3 text-right font-semibold text-gray-600">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for c in conjuntos %}
+        {% set sus = sus_map.get(c.id) %}
+        <tr class="hover:bg-gray-50 transition">
+          <td class="px-4 py-3 font-medium text-gray-800">{{ c.nombre }}</td>
+          <td class="px-4 py-3">
+            {% if sus %}
+              <span class="px-2 py-0.5 rounded-full text-xs font-medium
+                {% if sus.estado == 'Activo' %}bg-green-100 text-green-700
+                {% elif sus.estado == 'Suspendido' %}bg-red-100 text-red-700
+                {% else %}bg-yellow-100 text-yellow-700{% endif %}">
+                {{ sus.estado }}
+              </span>
+            {% else %}
+              <span class="text-gray-400 text-xs">Sin suscripcion</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-gray-600 text-xs">
+            {{ sus.fecha_vencimiento.strftime('%d/%m/%Y') if sus and sus.fecha_vencimiento else '—' }}
+          </td>
+          <td class="px-4 py-3 text-gray-600">
+            {% if sus %}$ {{ "{:,.0f}".format(sus.valor_mensual) }}{% else %}—{% endif %}
+          </td>
+          <td class="px-4 py-3 text-gray-500 text-xs max-w-xs truncate">
+            {{ sus.observaciones or '—' if sus else '—' }}
+          </td>
+          <td class="px-4 py-3 text-right">
+            <div class="flex items-center justify-end gap-2 flex-wrap">
+              {% if not sus %}
+                <button @click="openCreate('{{ c.id }}', '{{ c.nombre|e }}')"
+                        class="text-indigo-600 hover:text-indigo-800 text-xs font-medium">
+                  Crear
+                </button>
+              {% else %}
+                <button @click="openPagar('{{ c.id }}')"
+                        class="text-green-600 hover:text-green-800 text-xs font-medium">
+                  +1 Mes
+                </button>
+                {% if sus.estado != 'Suspendido' %}
+                <form method="post" action="/panel/sa/suscripciones/{{ c.id }}/suspender" class="inline">
+                  <button type="submit" class="text-yellow-600 hover:text-yellow-800 text-xs font-medium">
+                    Suspender
+                  </button>
+                </form>
+                {% else %}
+                <form method="post" action="/panel/sa/suscripciones/{{ c.id }}/activar" class="inline">
+                  <button type="submit" class="text-blue-600 hover:text-blue-800 text-xs font-medium">
+                    Activar
+                  </button>
+                </form>
+                {% endif %}
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="px-4 py-8 text-center text-gray-400">No hay conjuntos</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+
+  <!-- Modal Crear suscripcion -->
+  <div x-show="createId !== null" x-cloak
+       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4"
+       @keydown.escape.window="createId = null">
+    <div @click.outside="createId = null"
+         class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+      <h2 class="text-base font-semibold text-gray-800 mb-1">Nueva suscripcion</h2>
+      <p class="text-sm text-gray-500 mb-4" x-text="createNombre"></p>
+      <form method="post" :action="`/panel/sa/suscripciones/${createId}/crear`" class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Estado</label>
+          <select name="estado"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="Activo">Activo</option>
+            <option value="Suspendido">Suspendido</option>
+            <option value="Vencido">Vencido</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Fecha vencimiento *</label>
+          <input name="fecha_vencimiento" type="date" required
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Valor mensual *</label>
+          <input name="valor_mensual" type="number" step="0.01" min="0" required
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                 placeholder="0.00" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Observaciones</label>
+          <textarea name="observaciones" rows="2"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="button" @click="createId = null"
+                  class="flex-1 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 transition">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition">
+            Crear
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- Modal Pagar / extender -->
+  <div x-show="pagarId !== null" x-cloak
+       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4"
+       @keydown.escape.window="pagarId = null">
+    <div @click.outside="pagarId = null"
+         class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+      <h2 class="text-base font-semibold text-gray-800 mb-2">Registrar pago</h2>
+      <p class="text-sm text-gray-500 mb-4">Se extender&aacute; el vencimiento 1 mes adicional.</p>
+      <form method="post" :action="`/panel/sa/suscripciones/${pagarId}/pagar`" class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Observacion (opcional)</label>
+          <input name="observaciones" type="text"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                 placeholder="Ej: Pago mes de enero" />
+        </div>
+        <div class="flex gap-3 pt-1">
+          <button type="button" @click="pagarId = null"
+                  class="flex-1 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 transition">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition">
+            Confirmar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

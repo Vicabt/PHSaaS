@@ -128,6 +128,38 @@
 
 ---
 
+## Vistas HTML — routers/views.py
+
+> Rutas del panel web. Auth via cookie `ph_token` (JWT). Responden HTML, no JSON.
+> Todos los POST usan PRG (Post-Redirect-Get). Flash messages en query params `?success=` / `?error=`.
+
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| GET | `/` | Público | Pantalla de login |
+| POST | `/panel/login` | Público | Procesar login, setear cookies |
+| GET | `/panel/logout` | Autenticado | Limpiar cookies, redirigir a `/` |
+| GET | `/panel/sa/conjuntos` | SA | Lista conjuntos con suscripción |
+| POST | `/panel/sa/conjuntos/crear` | SA | Crear conjunto |
+| POST | `/panel/sa/conjuntos/{id}/editar` | SA | Editar conjunto |
+| POST | `/panel/sa/conjuntos/{id}/eliminar` | SA | Soft delete conjunto |
+| GET | `/panel/sa/suscripciones` | SA | Gestión suscripciones |
+| POST | `/panel/sa/suscripciones/{id}/crear` | SA | Crear suscripción |
+| POST | `/panel/sa/suscripciones/{id}/pagar` | SA | +1 mes vencimiento |
+| POST | `/panel/sa/suscripciones/{id}/suspender` | SA | Suspender |
+| POST | `/panel/sa/suscripciones/{id}/activar` | SA | Activar |
+| GET | `/panel/app/propiedades` | AD | Lista propiedades del conjunto |
+| POST | `/panel/app/propiedades/crear` | AD | Crear propiedad |
+| POST | `/panel/app/propiedades/{id}/editar` | AD | Editar propiedad |
+| POST | `/panel/app/propiedades/{id}/eliminar` | AD | Soft delete propiedad |
+| GET | `/panel/app/usuarios` | AD | Lista usuarios del conjunto |
+| POST | `/panel/app/usuarios/crear` | AD | Crear usuario (crea en Supabase Auth + local) |
+| POST | `/panel/app/usuarios/{id}/rol` | AD | Cambiar rol |
+| POST | `/panel/app/usuarios/{id}/eliminar` | AD | Remover del conjunto (soft delete) |
+| GET | `/panel/app/configuracion` | AD | Ver configuración del conjunto |
+| POST | `/panel/app/configuracion` | AD | Guardar configuración |
+
+---
+
 ## Endpoints internos — routers/internal.py
 
 | Método | Ruta | Acceso | Descripción |

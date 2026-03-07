@@ -18,13 +18,9 @@ import logging
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
-from jose import JWTError, jwt
-
-from ph_saas.config import settings
+from jose import JWTError
 
 logger = logging.getLogger(__name__)
-
-JWT_ALGORITHM = "HS256"
 
 # Rutas que NO pasan por verificación de tenant
 PUBLIC_PREFIXES = (
@@ -36,6 +32,7 @@ PUBLIC_PREFIXES = (
     "/favicon.ico",
     "/static/",
     "/health",
+    "/panel/",   # vistas HTML — gestionan su propia auth via cookies
 )
 
 
@@ -60,18 +57,15 @@ class TenantMiddleware(BaseHTTPMiddleware):
                 content={"detail": "Se requiere autenticación"},
             )
 
+        import asyncio
         token = auth_header.removeprefix("Bearer ").strip()
         try:
-            payload = jwt.decode(
-                token,
-                settings.JWT_SECRET,
-                algorithms=[JWT_ALGORITHM],
-                options={"verify_aud": False},
-            )
+            from ph_saas.dependencies import _decode_jwt
+            payload = await asyncio.to_thread(_decode_jwt, token)
         except JWTError:
             return JSONResponse(
                 status_code=401,
-                content={"detail": "Sesión expirada. Por favor inicia sesión nuevamente"},
+                content={"detail": "Sesion expirada. Por favor inicia sesion nuevamente"},
             )
 
         # ── SuperAdmin → bypass completo ───────────────────────────────────────

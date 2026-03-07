@@ -3,6 +3,7 @@ models/proceso_log.py — Tabla: proceso_log
 Solo para idempotencia de GENERACION_CUOTAS.
 Los intereses usan cuota_interes_log, NO esta tabla.
 """
+from __future__ import annotations
 
 import uuid
 from datetime import datetime

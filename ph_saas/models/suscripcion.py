@@ -2,6 +2,7 @@
 models/suscripcion.py — Tabla: suscripcion_saas
 Un registro por conjunto. Controla el acceso SaaS.
 """
+from __future__ import annotations
 
 import uuid
 from datetime import date, datetime

@@ -8,10 +8,10 @@
 
 | Capa | Tecnología |
 |---|---|
-| Backend | Python 3.12 + FastAPI |
+| Backend | Python 3.14.3 + FastAPI 0.115.0 |
 | Base de datos | PostgreSQL via Supabase |
-| Frontend | HTML + Tailwind CSS + HTMX |
-| Autenticación | Supabase Auth (JWT) |
+| Frontend | Jinja2 + Tailwind CSS CDN + Alpine.js CDN |
+| Autenticación | Supabase Auth (JWT ES256 via JWKS) |
 | PDFs | WeasyPrint |
 | Notificaciones | Twilio (WhatsApp) |
 | Jobs automáticos | APScheduler + cron-job.org |
@@ -22,6 +22,14 @@
 - Modelo: Shared Database + filtros por `conjunto_id` en código Python
 - Cada tabla funcional tiene `conjunto_id UUID NOT NULL`
 - El aislamiento se hace en `middleware/tenant.py`, NO en RLS de PostgreSQL (Fase 1)
+
+## Autenticación JWT
+
+- Supabase nuevos proyectos emiten tokens **ES256** (ECDSA), no HS256
+- Clave pública obtenida via JWKS: `{SUPABASE_URL}/auth/v1/.well-known/jwks.json`
+- JWKS se precarga al startup y se cachea en memoria del proceso (`dependencies.py`)
+- `TenantMiddleware` llama `_decode_jwt()` via `asyncio.to_thread()` (no bloquea el event loop)
+- Vistas HTML (`/panel/*`) gestionan su propia auth via cookie `ph_token` — no pasan por TenantMiddleware
 
 ## Flujo del middleware
 
@@ -89,32 +97,32 @@ ph_saas/
 │   ├── auth.py
 │   ├── conjuntos.py
 │   ├── propiedades.py
-│   ├── cuotas.py
-│   ├── pagos.py
-│   ├── cartera.py
-│   ├── reportes.py
 │   ├── suscripciones.py
-│   └── internal.py          ← /internal/generar-cuotas y /internal/calcular-intereses
+│   ├── views.py              ← pantallas HTML (login, SA, AD) — auth via cookies
+│   ├── cuotas.py             ← Fase 2
+│   ├── pagos.py              ← Fase 2
+│   ├── cartera.py            ← Fase 3
+│   ├── reportes.py           ← Fase 3
+│   └── internal.py           ← /internal/generar-cuotas y /internal/calcular-intereses
 ├── services/
-│   ├── cuota_service.py
-│   ├── pago_service.py
-│   ├── cartera_service.py
-│   ├── pdf_service.py
-│   ├── whatsapp_service.py
+│   ├── cuota_service.py      ← Fase 2
+│   ├── pago_service.py       ← Fase 2
+│   ├── cartera_service.py    ← Fase 3
+│   ├── pdf_service.py        ← Fase 3
+│   ├── whatsapp_service.py   ← Fase 4
 │   └── suscripcion_service.py
-├── templates/               ← HTML para PDFs (WeasyPrint)
-│   ├── paz_y_salvo.html
-│   ├── estado_cuenta.html
-│   └── cartera.html
-├── static/
-└── pages/                   ← HTML + HTMX del frontend
-    ├── login.html
-    ├── dashboard.html
-    ├── propiedades.html
-    ├── cuotas.html
-    ├── pagos.html
-    ├── reportes.html
-    └── suscripciones.html
+├── templates/               ← Jinja2 views (Fase 1) + HTML para PDFs WeasyPrint (Fase 3)
+│   ├── base.html             ← layout sidebar Tailwind + Alpine.js
+│   ├── login.html
+│   ├── sa/                   ← vistas superadmin
+│   │   ├── conjuntos.html
+│   │   └── suscripciones.html
+│   ├── app/                  ← vistas administrador
+│   │   ├── propiedades.html
+│   │   ├── usuarios.html
+│   │   └── configuracion.html
+│   └── pdf/                  ← Fase 3: paz_y_salvo.html, estado_cuenta.html
+└── static/
 ```
 
 ## Servicios externos

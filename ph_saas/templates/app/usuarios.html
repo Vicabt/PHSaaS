@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}Usuarios — PH SaaS{% endblock %}
+{% block heading %}Usuarios del conjunto{% endblock %}
+
+{% block content %}
+<div x-data="{
+  showCreate: false,
+  rolUsuarioId: null,
+  rolActual: '',
+  deleteId: null,
+  openRol(id, rolActual) { this.rolUsuarioId = id; this.rolActual = rolActual; },
+  openDelete(id) { this.deleteId = id; },
+}">
+
+  <!-- Toolbar -->
+  <div class="flex items-center justify-between mb-6">
+    <p class="text-sm text-gray-500">{{ usuarios|length }} usuario(s) — {{ conjunto_nombre }}</p>
+    <button @click="showCreate = true"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition shadow-sm">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Nuevo usuario
+    </button>
+  </div>
+
+  <!-- Tabla -->
+  <div class="bg-white rounded-xl shadow-sm overflow-auto">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">Nombre</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">Correo</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">Rol</th>
+          <th class="px-4 py-3 text-right font-semibold text-gray-600">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for u in usuarios %}
+        <tr class="hover:bg-gray-50 transition">
+          <td class="px-4 py-3 font-medium text-gray-800">{{ u.nombre }} {{ u.apellido }}</td>
+          <td class="px-4 py-3 text-gray-600">{{ u.correo }}</td>
+          <td class="px-4 py-3">
+            <span class="px-2 py-0.5 rounded-full text-xs font-medium
+              {% if u.rol == 'Administrador' %}bg-indigo-100 text-indigo-700
+              {% elif u.rol == 'Contador' %}bg-blue-100 text-blue-700
+              {% else %}bg-gray-100 text-gray-600{% endif %}">
+              {{ u.rol }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-right space-x-2">
+            <button @click="openRol('{{ u.id }}', '{{ u.rol }}')"
+                    class="text-indigo-600 hover:text-indigo-800 text-xs font-medium">Cambiar rol</button>
+            <button @click="openDelete('{{ u.id }}')"
+                    class="text-red-500 hover:text-red-700 text-xs font-medium">Remover</button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="px-4 py-8 text-center text-gray-400">No hay usuarios en este conjunto</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+
+  <!-- Modal Crear usuario -->
+  <div x-show="showCreate" x-cloak
+       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4"
+       @keydown.escape.window="showCreate = false">
+    <div @click.outside="showCreate = false"
+         class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+      <h2 class="text-base font-semibold text-gray-800 mb-4">Nuevo usuario</h2>
+      <form method="post" action="/panel/app/usuarios/crear" class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Nombre *</label>
+            <input name="nombre" type="text" required
+                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Apellido *</label>
+            <input name="apellido" type="text" required
+                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Correo electronico *</label>
+          <input name="email" type="email" required
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                 placeholder="usuario@ejemplo.com" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Contrasena inicial *</label>
+          <input name="password" type="password" required minlength="8"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                 placeholder="Min. 8 caracteres" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Rol *</label>
+          <select name="rol"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            {% for r in roles %}
+            <option value="{{ r }}">{{ r }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="button" @click="showCreate = false"
+                  class="flex-1 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 transition">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition">
+            Crear
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- Modal Cambiar rol -->
+  <div x-show="rolUsuarioId !== null" x-cloak
+       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4"
+       @keydown.escape.window="rolUsuarioId = null">
+    <div @click.outside="rolUsuarioId = null"
+         class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+      <h2 class="text-base font-semibold text-gray-800 mb-4">Cambiar rol</h2>
+      <form method="post" :action="`/panel/app/usuarios/${rolUsuarioId}/rol`" class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Nuevo rol</label>
+          <select name="rol" x-model="rolActual"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            {% for r in roles %}
+            <option value="{{ r }}">{{ r }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="button" @click="rolUsuarioId = null"
+                  class="flex-1 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 transition">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition">
+            Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- Modal Remover usuario -->
+  <div x-show="deleteId !== null" x-cloak
+       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4"
+       @keydown.escape.window="deleteId = null">
+    <div @click.outside="deleteId = null"
+         class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+      <h2 class="text-base font-semibold text-gray-800 mb-2">Remover usuario</h2>
+      <p class="text-sm text-gray-500 mb-5">El usuario sera removido de este conjunto. Su cuenta no sera eliminada.</p>
+      <form method="post" :action="`/panel/app/usuarios/${deleteId}/eliminar`">
+        <div class="flex gap-3">
+          <button type="button" @click="deleteId = null"
+                  class="flex-1 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 transition">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition">
+            Remover
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

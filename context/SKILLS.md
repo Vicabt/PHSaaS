@@ -43,11 +43,10 @@ ph_saas/
 │   └── tenant.py
 ├── models/          ← un archivo por tabla
 ├── schemas/         ← un archivo por entidad
-├── routers/         ← un archivo por módulo
+├── routers/         ← un archivo por módulo (views.py = pantallas HTML)
 ├── services/        ← un archivo por servicio
-├── templates/       ← HTML para PDFs (WeasyPrint)
-├── static/          ← CSS, JS, imágenes
-└── pages/           ← HTML + HTMX del frontend
+├── templates/       ← Jinja2 HTML views (sa/, app/) + PDFs WeasyPrint (pdf/)
+└── static/          ← CSS, JS, imágenes
 ```
 
 ### 2. Convenciones de nombres

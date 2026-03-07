@@ -2,6 +2,7 @@
 models/saldo_a_favor.py — Tabla: saldo_a_favor
 Se genera cuando pago.valor_total > suma(pago_detalle.monto_aplicado).
 """
+from __future__ import annotations
 
 import uuid
 from datetime import datetime
