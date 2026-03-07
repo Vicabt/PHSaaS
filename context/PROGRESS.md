@@ -6,9 +6,9 @@
 
 ## Estado actual
 
-**Fase:** Fase 1 COMPLETA — todos los endpoints implementados + pantallas HTML Tailwind operativas
+**Fase:** Fase 1 COMPLETA — todos los endpoints implementados + pantallas HTML Tailwind operativas + test suite completo ✅
 **Versión del documento de planificación:** v2.5
-**Última actualización:** 7 Marzo 2026 — Fase 1 completa: endpoints + pantallas HTML con Tailwind/Alpine.js. Servidor corriendo en http://localhost:8000 ✅
+**Última actualización:** 7 Marzo 2026 — Tests completos: test_endpoints.py (7/7 secciones) y test_panel.py (29/29). Bug fix: 500 en POST /admin/conjuntos con nombre de registro soft-deleted. Migración 002 escrita.
 
 ---
 
@@ -34,7 +34,8 @@
 - [x] CRUD de Usuarios y asignación de roles — `routers/conjuntos.py` (sub-rutas `/api/usuarios`)
 - [x] Configuración por conjunto (cuota, tasas, fechas) — `routers/conjuntos.py` (sub-rutas `/api/configuracion`)
 - [x] Gestión de Suscripciones SaaS — `routers/suscripciones.py`
-- [x] Tests de endpoints — todos pasan: health, auth (login/me/401/422), conjuntos CRUD, suscripciones, propiedades, cleanup
+- [x] Tests de endpoints — todos pasan: health, auth (login/me/401/422), conjuntos CRUD, suscripciones, propiedades, cleanup → `test_endpoints.py` 7/7 secciones ✅
+- [x] Tests de pantallas HTML — `test_panel.py` 29/29 pruebas ✅ (login, conjuntos SA, suscripciones SA, panel app, logout)
 - [x] Pantallas HTML basicas con Tailwind
 
 ---
@@ -84,6 +85,7 @@
 | `.env.example` | ✅ Creado |
 | `.gitignore` | ✅ Actualizado |
 | `migrations/001_initial_schema.sql` | ✅ Creado y ejecutado en Supabase |
+| `migrations/002_fix_conjunto_nombre_unique.sql` | ✅ Creado — pendiente ejecutar en Supabase (reemplaza UNIQUE por índice parcial WHERE is_deleted=FALSE) |
 | `ph_saas/__init__.py` | ✅ Creado |
 | `ph_saas/main.py` | ✅ Creado |
 | `ph_saas/config.py` | ✅ Creado |

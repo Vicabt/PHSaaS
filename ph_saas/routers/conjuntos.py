@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from supabase import create_client, Client
 
@@ -64,10 +65,10 @@ def crear_conjunto(
     Crea un nuevo conjunto.
     Si se incluye `suscripcion` en el body, crea también la suscripción SaaS.
     """
-    # Verificar nombre único
+    # Verificar nombre único — incluye registros soft-deleted para no colisionar con UNIQUE en DB
     existe = (
         db.query(Conjunto)
-        .filter(Conjunto.nombre == body.nombre, Conjunto.is_deleted == False)  # noqa: E712
+        .filter(Conjunto.nombre == body.nombre)
         .first()
     )
     if existe:
@@ -80,7 +81,11 @@ def crear_conjunto(
         ciudad=body.ciudad,
     )
     db.add(conjunto)
-    db.flush()  # obtener conjunto.id antes de crear suscripción
+    try:
+        db.flush()  # obtener conjunto.id antes de crear suscripción
+    except IntegrityError:
+        db.rollback()
+        raise http_409(ErrorMsg.CONJUNTO_ALREADY_EXISTS)
 
     # Configuración por defecto (se puede personalizar después)
     config = ConfiguracionConjunto(
@@ -105,7 +110,11 @@ def crear_conjunto(
         )
         db.add(sus)
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise http_409(ErrorMsg.CONJUNTO_ALREADY_EXISTS)
     db.refresh(conjunto)
     return conjunto
 

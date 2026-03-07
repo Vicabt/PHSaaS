@@ -5,6 +5,7 @@ Ejecutar con: python test_endpoints.py
 
 import httpx
 import sys
+import uuid
 
 BASE = "http://localhost:8000"
 PASSWORD = "Vc92985315$%"
@@ -82,8 +83,11 @@ if r.status_code == 200:
 else:
     fail(f"ERROR: {r.text}")
 
+# Nombre único por ejecución para evitar conflicto con UNIQUE en DB tras soft-delete
+CONJUNTO_NOMBRE = f"Conjunto Test {uuid.uuid4().hex[:8]}"
+
 payload = {
-    "nombre": "Conjunto Prueba Test",
+    "nombre": CONJUNTO_NOMBRE,
     "nit": "900123456-1",
     "direccion": "Calle 123 # 45-67",
     "ciudad": "Bogota"
