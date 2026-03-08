@@ -4,6 +4,7 @@ get_current_user: decodifica el JWT de Supabase y retorna datos del usuario.
 require_role: fábrica de dependencias para control de acceso por rol.
 """
 
+import logging
 import uuid
 from typing import Callable, Optional
 
@@ -18,6 +19,8 @@ from ph_saas.database import get_db
 from ph_saas.errors import ErrorMsg, http_401, http_403
 
 security = HTTPBearer()
+
+_log = logging.getLogger("ph_saas.auth")
 
 # ── JWKS cache (Supabase publica clave pública para ES256) ─────────────────────
 
@@ -109,9 +112,6 @@ def get_current_user(
     Verifica el JWT de Supabase Auth y retorna el usuario actual.
     Lanza 401 si el token es inválido o expirado.
     """
-    import logging
-    _log = logging.getLogger("ph_saas.auth")
-
     token = credentials.credentials
     try:
         payload = _decode_jwt(token)

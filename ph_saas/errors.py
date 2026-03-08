@@ -4,7 +4,6 @@ Usar SIEMPRE estas constantes. Nunca escribir strings de error directamente en r
 """
 
 from fastapi import HTTPException
-import http
 
 
 class ErrorMsg:

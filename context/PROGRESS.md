@@ -6,9 +6,9 @@
 
 ## Estado actual
 
-**Fase:** Fase 1 COMPLETA — todos los endpoints implementados + pantallas HTML Tailwind operativas + test suite completo ✅
+**Fase:** Fase 2 COMPLETA — Iniciando Fase 3: Cartera y Reportes
 **Versión del documento de planificación:** v2.5
-**Última actualización:** 7 Marzo 2026 — Tests completos: test_endpoints.py (7/7 secciones) y test_panel.py (29/29). Bug fix: 500 en POST /admin/conjuntos con nombre de registro soft-deleted. Migración 002 escrita.
+**Última actualización:** 8 Marzo 2026 — Limpieza de código: imports sin uso, comentarios obsoletos y archivos temporales eliminados. Tests siguen en verde.
 
 ---
 
@@ -42,12 +42,14 @@
 
 ## Fase 2 — Cuotas y Pagos (Semana 7-10)
 
-- [ ] Generación manual de cuotas (un mes a la vez)
-- [ ] Registro de pagos con detalle por cuota
-- [ ] Manejo de saldos a favor
-- [ ] Movimientos contables automáticos
+- [x] Generación manual de cuotas (un mes a la vez) — `services/cuota_service.py` + `routers/cuotas.py`
+- [x] Registro de pagos con detalle por cuota — `services/pago_service.py` + `routers/pagos.py`
+- [x] Manejo de saldos a favor — `pago_service.aplicar_saldo_a_favor()` + `GET/POST /api/saldos-a-favor`
+- [x] Movimientos contables automáticos — creados en `pago_service` al registrar cada pago
+- [x] APScheduler: job diario medianoche → marcar cuotas `Vencida` — `cuota_service.marcar_cuotas_vencidas()` conectado
+- [x] Endpoints `/internal/generar-cuotas` y `/internal/calcular-intereses` con `X-Internal-Token` — `routers/internal.py`
 - [ ] Configurar cron-job.org → `/internal/generar-cuotas` día 1
-- [ ] APScheduler: job diario medianoche → marcar cuotas `Vencida`
+- [ ] Configurar cron-job.org → `/internal/calcular-intereses` día 5
 
 ---
 
@@ -55,10 +57,7 @@
 
 - [ ] Vista de cartera por conjunto
 - [ ] Estado de cuenta por propiedad
-- [ ] Generación de PDFs (paz y salvo, estado de cuenta)
-- [ ] Endpoint `/internal/calcular-intereses` con idempotencia via `cuota_interes_log`
-- [ ] Configurar cron-job.org → `/internal/calcular-intereses` día 5
-- [ ] Cálculo y aplicación de intereses de mora
+- [ ] Generación de PDFs (paz y salvo, estado de cuenta) — WeasyPrint
 
 ---
 
@@ -87,7 +86,7 @@
 | `migrations/001_initial_schema.sql` | ✅ Creado y ejecutado en Supabase |
 | `migrations/002_fix_conjunto_nombre_unique.sql` | ✅ Creado — pendiente ejecutar en Supabase (reemplaza UNIQUE por índice parcial WHERE is_deleted=FALSE) |
 | `ph_saas/__init__.py` | ✅ Creado |
-| `ph_saas/main.py` | ✅ Creado |
+| `ph_saas/main.py` | ✅ Creado — actualizado Fase 2: routers cuotas, pagos, internal registrados |
 | `ph_saas/config.py` | ✅ Creado |
 | `ph_saas/database.py` | ✅ Creado |
 | `ph_saas/scheduler.py` | ✅ Creado (job diario medianoche) |
@@ -109,6 +108,13 @@
 | `ph_saas/models/proceso_log.py` | ✅ Creado |
 | `ph_saas/models/cuota_interes_log.py` | ✅ Creado |
 | `ph_saas/routers/auth.py` | ✅ Creado (`/auth/login`, `/auth/logout`, `/auth/me`) |
+| `ph_saas/schemas/cuota.py` | ✅ Creado (CuotaOut, CuotaDetalle, CuotaGenerarRequest) |
+| `ph_saas/schemas/pago.py` | ✅ Creado (PagoCreate, PagoOut, PagoConDetalle, PagoDetalleIn/Out, SaldoAFavorOut, AplicarSaldoRequest) |
+| `ph_saas/services/cuota_service.py` | ✅ Creado (generar_cuotas, calcular_intereses, marcar_cuotas_vencidas) |
+| `ph_saas/services/pago_service.py` | ✅ Creado (registrar_pago, anular_pago, aplicar_saldo_a_favor) |
+| `ph_saas/routers/cuotas.py` | ✅ Creado (GET/POST endpoints cuotas) |
+| `ph_saas/routers/pagos.py` | ✅ Creado (GET/POST/DELETE pagos + saldos a favor) |
+| `ph_saas/routers/internal.py` | ✅ Creado (/internal/generar-cuotas, /internal/calcular-intereses) |
 | `ph_saas/schemas/conjunto.py` | ✅ Creado (ConjuntoCreate/Update/Out/Detalle, SuscripcionCreate/Out) |
 | `ph_saas/schemas/propiedad.py` | ✅ Creado (PropiedadCreate/Update/Out/Detalle) |
 | `ph_saas/schemas/usuario.py` | ✅ Creado (UsuarioCreate/Update/Out, UsuarioConjuntoOut, CambiarRolBody) |
@@ -122,6 +128,7 @@
 | `ph_saas/templates/sa/conjuntos.html` | ✅ Creado |
 | `ph_saas/templates/sa/suscripciones.html` | ✅ Creado |
 | `ph_saas/templates/app/propiedades.html` | ✅ Creado |
+| `test_fase2.py` | ✅ Suite de tests Fase 2 — 11 secciones, todos pasaron |
 | `ph_saas/templates/app/usuarios.html` | ✅ Creado |
 | `ph_saas/templates/app/configuracion.html` | ✅ Creado |
 
@@ -157,7 +164,7 @@
 4. Cron dinámico por conjunto — usar `dia_generacion_cuota` cuando se implemente
 5. Integración Wompi — cobro automático SaaS para +10 conjuntos
 6. JWKS cache — actualmente en memoria del proceso; al reiniciar se recarga. Para producción con múltiples workers, considerar Redis o cache persistente.
-7. Scripts de debug en raíz — `debug_auth.py`, `create_superadmin.py`, `fix_superadmin.py`, `debug_jwt.py`, `debug_jwt2.py`, `debug_direct.py` — eliminar antes del deploy a producción.
+7. Scripts de debug en raíz — `debug_auth.py`, `create_superadmin.py`, `fix_superadmin.py`, `debug_jwt.py`, `debug_jwt2.py`, `debug_direct.py` — **PENDIENTE ELIMINAR antes del deploy a producción.** Útiles localmente como referencia de Railway/Auth.
 
 ---
 
