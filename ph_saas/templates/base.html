@@ -54,6 +54,17 @@
           Propiedades
         </a>
         {% if user_rol == 'Administrador' %}
+        <a href="/panel/app/propietarios"
+           class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition
+                  {% if active == 'propietarios' %}bg-indigo-700 text-white{% else %}text-indigo-200 hover:bg-indigo-800{% endif %}">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+          </svg>
+          Propietarios
+        </a>
+        {% endif %}
+        {% if user_rol == 'Administrador' %}
         <a href="/panel/app/usuarios"
            class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition
                   {% if active == 'usuarios' %}bg-indigo-700 text-white{% else %}text-indigo-200 hover:bg-indigo-800{% endif %}">

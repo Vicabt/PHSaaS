@@ -542,20 +542,19 @@ def app_propiedades(request: Request):
 
         user_rol = _get_user_rol(user.id, conjunto_id, db)
 
-        # Lista de usuarios del conjunto para asignar propietario
-        uc_usuarios = (
-            db.query(UsuarioConjunto)
-            .join(Usuario, Usuario.id == UsuarioConjunto.usuario_id)
-            .filter(
+        # Propietarios para el dropdown (no-staff de este conjunto)
+        staff_ids_prop = {
+            row[0] for row in db.query(UsuarioConjunto.usuario_id).filter(
                 UsuarioConjunto.conjunto_id == conjunto_id,
                 UsuarioConjunto.is_deleted == False,  # noqa: E712
-                Usuario.is_deleted == False,  # noqa: E712
-            )
-            .all()
-        )
+            ).all()
+        }
+        q_prop = db.query(Usuario).filter(Usuario.is_deleted == False)  # noqa: E712
+        if staff_ids_prop:
+            q_prop = q_prop.filter(~Usuario.id.in_(staff_ids_prop))
         usuarios_lista = [
-            {"id": str(uc.usuario_id), "nombre": f"{uc.usuario.nombre} {uc.usuario.apellido or ''}" .strip()}
-            for uc in uc_usuarios
+            {"id": str(u.id), "nombre": f"{u.nombre} {u.apellido or ''}".strip()}
+            for u in q_prop.order_by(Usuario.nombre).all()
         ]
 
         response = templates.TemplateResponse("app/propiedades.html", {
@@ -906,6 +905,215 @@ def app_eliminar_usuario(usuario_id: uuid.UUID, request: Request):
 
 
 # =============================================================================
+# ADMINISTRADOR -- Propietarios (Residentes)
+# =============================================================================
+
+@router.get("/panel/app/propietarios", response_class=HTMLResponse)
+def app_propietarios(request: Request):
+    user = _get_user(request)
+    if not user:
+        return _redir_login()
+    conjunto_id = _get_conjunto_id(request)
+    if not conjunto_id:
+        return _redir_login()
+
+    db = SessionLocal()
+    try:
+        uc_self = db.query(UsuarioConjunto).filter(
+            UsuarioConjunto.usuario_id == user.id,
+            UsuarioConjunto.conjunto_id == conjunto_id,
+            UsuarioConjunto.is_deleted == False,  # noqa: E712
+        ).first()
+        if not uc_self or uc_self.rol != "Administrador":
+            return _redir("/panel/app/propiedades", error="Solo administradores pueden gestionar propietarios")
+        user_rol = uc_self.rol
+
+        # IDs del personal del conjunto (no son propietarios)
+        staff_ids = {
+            row[0] for row in db.query(UsuarioConjunto.usuario_id).filter(
+                UsuarioConjunto.conjunto_id == conjunto_id,
+                UsuarioConjunto.is_deleted == False,  # noqa: E712
+            ).all()
+        }
+
+        # Propietarios = usuarios NO staff de este conjunto
+        q = db.query(Usuario).filter(Usuario.is_deleted == False)  # noqa: E712
+        if staff_ids:
+            q = q.filter(~Usuario.id.in_(staff_ids))
+        residentes = q.order_by(Usuario.nombre).all()
+
+        # Unidades asignadas a cada residente en este conjunto
+        from ph_saas.models.propiedad import Propiedad as _Prop
+        def _unidades(uid):
+            return [
+                p.numero_apartamento for p in db.query(_Prop).filter(
+                    _Prop.propietario_id == uid,
+                    _Prop.conjunto_id == conjunto_id,
+                    _Prop.is_deleted == False,  # noqa: E712
+                ).all()
+            ]
+
+        propietarios_data = [
+            {
+                "id": str(u.id),
+                "nombre": u.nombre,
+                "apellido": u.apellido or "",
+                "cedula": u.cedula or "",
+                "correo": u.correo if not u.correo.endswith("@ph-saas.local") else "",
+                "telefono_ws": u.telefono_ws or "",
+                "unidades": _unidades(u.id),
+            }
+            for u in residentes
+        ]
+
+        cj = db.query(Conjunto).filter(Conjunto.id == conjunto_id).first()
+        response = templates.TemplateResponse("app/propietarios.html", {
+            "request": request,
+            "user": user,
+            "propietarios": propietarios_data,
+            "conjunto_nombre": cj.nombre if cj else "",
+            "user_rol": user_rol,
+            "success": request.query_params.get("success"),
+            "error": request.query_params.get("error"),
+            "active": "propietarios",
+        })
+    finally:
+        db.close()
+    return response
+
+
+@router.post("/panel/app/propietarios/crear")
+def app_crear_propietario(
+    request: Request,
+    nombre: str = Form(...),
+    apellido: str = Form(""),
+    cedula: str = Form(""),
+    correo: str = Form(""),
+    telefono_ws: str = Form(""),
+):
+    user = _get_user(request)
+    if not user:
+        return _redir_login()
+    conjunto_id = _get_conjunto_id(request)
+    if not conjunto_id:
+        return _redir_login()
+
+    db = SessionLocal()
+    try:
+        nuevo_id = uuid.uuid4()
+        correo_final = correo.strip().lower() if correo.strip() else f"sin-correo-{nuevo_id}@ph-saas.local"
+
+        if correo.strip():
+            existe = db.query(Usuario).filter(
+                Usuario.correo == correo_final, Usuario.is_deleted == False  # noqa: E712
+            ).first()
+            if existe:
+                return _redir("/panel/app/propietarios", error="Ya existe un usuario con ese correo")
+
+        nuevo = Usuario(
+            id=nuevo_id,
+            nombre=nombre.strip(),
+            apellido=apellido.strip() or None,
+            cedula=cedula.strip() or None,
+            correo=correo_final,
+            telefono_ws=telefono_ws.strip() or None,
+        )
+        db.add(nuevo)
+        db.commit()
+    except Exception:
+        db.rollback()
+        return _redir("/panel/app/propietarios", error="Error al crear propietario")
+    finally:
+        db.close()
+
+    return _redir("/panel/app/propietarios", success=f"Propietario {nombre.strip()} creado")
+
+
+@router.post("/panel/app/propietarios/{propietario_id}/editar")
+def app_editar_propietario(
+    propietario_id: uuid.UUID,
+    request: Request,
+    nombre: str = Form(...),
+    apellido: str = Form(""),
+    cedula: str = Form(""),
+    correo: str = Form(""),
+    telefono_ws: str = Form(""),
+):
+    user = _get_user(request)
+    if not user:
+        return _redir_login()
+    conjunto_id = _get_conjunto_id(request)
+    if not conjunto_id:
+        return _redir_login()
+
+    db = SessionLocal()
+    try:
+        p = db.query(Usuario).filter(
+            Usuario.id == propietario_id, Usuario.is_deleted == False  # noqa: E712
+        ).first()
+        if not p:
+            return _redir("/panel/app/propietarios", error="Propietario no encontrado")
+
+        correo_final = correo.strip().lower() if correo.strip() else p.correo
+        if correo.strip() and correo_final != p.correo:
+            existe = db.query(Usuario).filter(
+                Usuario.correo == correo_final,
+                Usuario.id != propietario_id,
+                Usuario.is_deleted == False,  # noqa: E712
+            ).first()
+            if existe:
+                return _redir("/panel/app/propietarios", error="Ya existe otro usuario con ese correo")
+
+        p.nombre = nombre.strip()
+        p.apellido = apellido.strip() or None
+        p.cedula = cedula.strip() or None
+        p.correo = correo_final
+        p.telefono_ws = telefono_ws.strip() or None
+        db.commit()
+    except Exception:
+        db.rollback()
+        return _redir("/panel/app/propietarios", error="Error al editar propietario")
+    finally:
+        db.close()
+
+    return _redir("/panel/app/propietarios", success="Propietario actualizado")
+
+
+@router.post("/panel/app/propietarios/{propietario_id}/eliminar")
+def app_eliminar_propietario(propietario_id: uuid.UUID, request: Request):
+    user = _get_user(request)
+    if not user:
+        return _redir_login()
+    conjunto_id = _get_conjunto_id(request)
+    if not conjunto_id:
+        return _redir_login()
+
+    db = SessionLocal()
+    try:
+        p = db.query(Usuario).filter(
+            Usuario.id == propietario_id, Usuario.is_deleted == False  # noqa: E712
+        ).first()
+        if not p:
+            return _redir("/panel/app/propietarios", error="Propietario no encontrado")
+        # Desasignar de unidades en este conjunto
+        for prop in db.query(Propiedad).filter(
+            Propiedad.propietario_id == propietario_id,
+            Propiedad.conjunto_id == conjunto_id,
+            Propiedad.is_deleted == False,  # noqa: E712
+        ).all():
+            prop.propietario_id = None
+        p.is_deleted = True
+        db.commit()
+    except Exception:
+        db.rollback()
+        return _redir("/panel/app/propietarios", error="Error al eliminar propietario")
+    finally:
+        db.close()
+
+    return _redir("/panel/app/propietarios", success="Propietario eliminado")
+
+
+# =============================================================================
 # ADMINISTRADOR -- Configuracion
 # =============================================================================
 
@@ -945,6 +1153,7 @@ def app_configuracion(request: Request):
 
         user_rol = _get_user_rol(user.id, conjunto_id, db)
         response = templates.TemplateResponse("app/configuracion.html", {
+
             "request": request,
             "user": user,
             "config": config_data,
