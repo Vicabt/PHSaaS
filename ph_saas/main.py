@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from ph_saas.config import settings
 from ph_saas.middleware.tenant import TenantMiddleware
-from ph_saas.routers import auth, conjuntos, cuotas, internal, pagos, propiedades, suscripciones, views
+from ph_saas.routers import auth, cartera, conjuntos, cuotas, internal, pagos, propiedades, reportes, suscripciones, views
 from ph_saas.scheduler import start_scheduler, stop_scheduler
 
 logging.basicConfig(
@@ -79,6 +79,8 @@ app.include_router(propiedades.router)
 app.include_router(suscripciones.router)
 app.include_router(cuotas.router)
 app.include_router(pagos.router)
+app.include_router(cartera.router)
+app.include_router(reportes.router)
 app.include_router(internal.router)
 app.include_router(views.router)
 

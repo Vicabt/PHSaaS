@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10pt;
+    color: #1a1a1a;
+    padding: 24px 32px;
+  }
+
+  /* ── Encabezado ── */
+  .header {
+    border-bottom: 2px solid #1e3a5f;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .header .title { font-size: 15pt; font-weight: bold; color: #1e3a5f; }
+  .header .meta  { text-align: right; font-size: 9pt; color: #555; }
+
+  /* ── Tarjetas de resumen ── */
+  .kpi-row {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .kpi-card {
+    flex: 1;
+    background: #f4f7fb;
+    border: 1px solid #c8d8ea;
+    border-radius: 5px;
+    padding: 12px 14px;
+  }
+  .kpi-card .kpi-label {
+    font-size: 7.5pt;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+  }
+  .kpi-card .kpi-value {
+    font-size: 13pt;
+    font-weight: bold;
+    color: #1e3a5f;
+  }
+  .kpi-card.danger .kpi-value  { color: #c53030; }
+  .kpi-card.success .kpi-value { color: #276749; }
+  .kpi-card.warn .kpi-value    { color: #b7791f; }
+
+  /* ── Título de sección ── */
+  .section-title {
+    font-size: 11pt;
+    font-weight: bold;
+    color: #1e3a5f;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #c8d8ea;
+  }
+
+  /* ── Tabla de antigüedad ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+    margin-bottom: 16px;
+  }
+  thead th {
+    background: #1e3a5f;
+    color: #fff;
+    padding: 7px 8px;
+    text-align: left;
+    font-size: 8.5pt;
+    letter-spacing: 0.03em;
+  }
+  thead th.right { text-align: right; }
+  thead th.center { text-align: center; }
+  tbody tr:nth-child(even) { background: #f9fbfd; }
+  tbody td { padding: 6px 8px; border-bottom: 1px solid #e0e7ef; }
+  tbody td.right { text-align: right; }
+  tbody td.center { text-align: center; }
+
+  /* ── Badge de rango ── */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 7.5pt;
+    font-weight: bold;
+  }
+  .badge-0-30  { background: #fffbe6; color: #b7791f; border: 1px solid #f6e05e; }
+  .badge-31-60 { background: #fff5e6; color: #c05621; border: 1px solid #fbd38d; }
+  .badge-61-90 { background: #fff0e6; color: #c53030; border: 1px solid #fc8181; }
+  .badge-90    { background: #fff5f5; color: #822727; border: 1px solid #fed7d7; }
+
+  /* ── Pie de página ── */
+  .footer {
+    border-top: 1px solid #ddd;
+    margin-top: 24px;
+    padding-top: 8px;
+    font-size: 7.5pt;
+    color: #999;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- Encabezado -->
+<div class="header">
+  <div>
+    <div class="title">Reporte de Cartera</div>
+    <div style="color:#555; font-size:10pt; margin-top:2px;">{{ conjunto_nombre }}</div>
+  </div>
+  <div class="meta">Fecha de generación: {{ fecha_generacion }}</div>
+</div>
+
+<!-- KPIs de resumen -->
+<div class="kpi-row">
+  <div class="kpi-card">
+    <div class="kpi-label">Total propiedades</div>
+    <div class="kpi-value">{{ resumen.total_propiedades }}</div>
+  </div>
+  <div class="kpi-card success">
+    <div class="kpi-label">Al día</div>
+    <div class="kpi-value">{{ resumen.propiedades_al_dia }}</div>
+  </div>
+  <div class="kpi-card danger">
+    <div class="kpi-label">En mora</div>
+    <div class="kpi-value">{{ resumen.propiedades_en_mora }}</div>
+  </div>
+  <div class="kpi-card warn">
+    <div class="kpi-label">Total deuda</div>
+    <div class="kpi-value">{{ fmt_cop(resumen.total_deuda) }}</div>
+  </div>
+  <div class="kpi-card danger">
+    <div class="kpi-label">Total vencido</div>
+    <div class="kpi-value">{{ fmt_cop(resumen.total_vencido) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Interés pendiente</div>
+    <div class="kpi-value">{{ fmt_cop(resumen.total_interes_pendiente) }}</div>
+  </div>
+</div>
+
+<!-- Tabla de antigüedad -->
+<div class="section-title">Antigüedad de cartera</div>
+
+{% if antiguedad %}
+<table>
+  <thead>
+    <tr>
+      <th>Propiedad</th>
+      <th class="center">Rango mora</th>
+      <th class="right">Días mora</th>
+      <th class="right">Saldo total</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in antiguedad %}
+    <tr>
+      <td>Apto. {{ item.numero_apartamento }}</td>
+      <td class="center">
+        {% if item.rango == '0-30' %}
+        <span class="badge badge-0-30">0 – 30 días</span>
+        {% elif item.rango == '31-60' %}
+        <span class="badge badge-31-60">31 – 60 días</span>
+        {% elif item.rango == '61-90' %}
+        <span class="badge badge-61-90">61 – 90 días</span>
+        {% else %}
+        <span class="badge badge-90">Más de 90 días</span>
+        {% endif %}
+      </td>
+      <td class="right">{{ item.dias_mora_max }}</td>
+      <td class="right"><strong>{{ fmt_cop(item.saldo_total) }}</strong></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p style="color:#276749; font-weight:bold; text-align:center; padding:20px;">
+  ✓ No hay propiedades con cartera vencida.
+</p>
+{% endif %}
+
+<div class="footer">
+  Documento generado por el sistema PH SaaS · {{ fecha_generacion }} · Solo para uso interno. No constituye documento público.
+</div>
+
+</body>
+</html>

@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10pt;
+    color: #1a1a1a;
+    padding: 24px 32px;
+  }
+
+  /* ── Encabezado ── */
+  .header {
+    border-bottom: 2px solid #1e3a5f;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .header .title { font-size: 15pt; font-weight: bold; color: #1e3a5f; }
+  .header .meta  { text-align: right; font-size: 9pt; color: #555; }
+
+  /* ── Datos de la propiedad ── */
+  .info-box {
+    background: #f4f7fb;
+    border: 1px solid #c8d8ea;
+    border-radius: 4px;
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 40px;
+  }
+  .info-box .label { font-size: 8pt; color: #666; text-transform: uppercase; letter-spacing: 0.05em; }
+  .info-box .value { font-size: 11pt; font-weight: bold; color: #1e3a5f; }
+
+  /* ── Tabla de cuotas ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 9pt;
+  }
+  thead th {
+    background: #1e3a5f;
+    color: #fff;
+    padding: 7px 8px;
+    text-align: left;
+    font-size: 8.5pt;
+    letter-spacing: 0.03em;
+  }
+  thead th.right { text-align: right; }
+  tbody tr:nth-child(even) { background: #f9fbfd; }
+  tbody td { padding: 6px 8px; border-bottom: 1px solid #e0e7ef; }
+  tbody td.right { text-align: right; }
+  tbody td.center { text-align: center; }
+
+  /* ── Badges de estado ── */
+  .badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 7.5pt;
+    font-weight: bold;
+    letter-spacing: 0.02em;
+  }
+  .badge-Pendiente { background: #fffbe6; color: #b7791f; border: 1px solid #f6e05e; }
+  .badge-Parcial   { background: #e6f0ff; color: #2b6cb0; border: 1px solid #90cdf4; }
+  .badge-Pagada    { background: #e6f4ea; color: #276749; border: 1px solid #9ae6b4; }
+  .badge-Vencida   { background: #fff5f5; color: #c53030; border: 1px solid #fc8181; }
+
+  /* ── Totales ── */
+  .totales {
+    width: 260px;
+    margin-left: auto;
+    margin-bottom: 20px;
+  }
+  .totales table { margin-bottom: 0; }
+  .totales td { padding: 5px 8px; border: none; }
+  .totales td.label { color: #555; }
+  .totales td.amount { text-align: right; font-weight: bold; }
+  .totales tr.total-row td { border-top: 2px solid #1e3a5f; font-size: 11pt; color: #1e3a5f; }
+
+  /* ── Pie de página ── */
+  .footer {
+    border-top: 1px solid #ddd;
+    margin-top: 24px;
+    padding-top: 8px;
+    font-size: 7.5pt;
+    color: #999;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- Encabezado -->
+<div class="header">
+  <div>
+    <div class="title">Estado de Cuenta</div>
+    <div style="color:#555; font-size:10pt; margin-top:2px;">{{ conjunto_nombre }}</div>
+  </div>
+  <div class="meta">
+    Fecha de generación: {{ fecha_generacion }}<br/>
+    Apto. / Casa: <strong>{{ estado.numero_apartamento }}</strong>
+  </div>
+</div>
+
+<!-- Info de la propiedad -->
+<div class="info-box">
+  <div>
+    <div class="label">Conjunto</div>
+    <div class="value">{{ conjunto_nombre }}</div>
+  </div>
+  <div>
+    <div class="label">Propiedad</div>
+    <div class="value">Apto. {{ estado.numero_apartamento }}</div>
+  </div>
+  <div>
+    <div class="label">Saldo a favor disponible</div>
+    <div class="value" style="color:#276749;">{{ fmt_cop(estado.saldo_a_favor_disponible) }}</div>
+  </div>
+</div>
+
+<!-- Tabla de cuotas -->
+<table>
+  <thead>
+    <tr>
+      <th>Período</th>
+      <th>Vencimiento</th>
+      <th class="right">Cuota base</th>
+      <th class="right">Interés</th>
+      <th class="right">Pagado capital</th>
+      <th class="right">Pagado interés</th>
+      <th class="right">Saldo pendiente</th>
+      <th class="center">Estado</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in estado.cuotas %}
+    <tr>
+      <td>{{ c.periodo }}</td>
+      <td>{{ c.fecha_vencimiento.strftime('%d/%m/%Y') }}</td>
+      <td class="right">{{ fmt_cop(c.valor_base) }}</td>
+      <td class="right">{{ fmt_cop(c.interes_generado) }}</td>
+      <td class="right">{{ fmt_cop(c.total_pagado_capital) }}</td>
+      <td class="right">{{ fmt_cop(c.total_pagado_interes) }}</td>
+      <td class="right"><strong>{{ fmt_cop(c.saldo_pendiente) }}</strong></td>
+      <td class="center"><span class="badge badge-{{ c.estado }}">{{ c.estado }}</span></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" style="text-align:center; color:#888; padding:14px;">Sin cuotas registradas</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- Totales -->
+<div class="totales">
+  <table>
+    <tr>
+      <td class="label">Total deuda pendiente</td>
+      <td class="amount" style="color:#c53030;">{{ fmt_cop(estado.total_deuda) }}</td>
+    </tr>
+    <tr>
+      <td class="label">Saldo a favor disponible</td>
+      <td class="amount" style="color:#276749;">{{ fmt_cop(estado.saldo_a_favor_disponible) }}</td>
+    </tr>
+    <tr class="total-row">
+      <td class="label"><strong>Saldo neto a pagar</strong></td>
+      <td class="amount">
+        <strong>{{ fmt_cop([estado.total_deuda - estado.saldo_a_favor_disponible, 0]|max) }}</strong>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<div class="footer">
+  Documento generado por el sistema PH SaaS · {{ fecha_generacion }} · Este documento no tiene validez como recibo de pago.
+</div>
+
+</body>
+</html>

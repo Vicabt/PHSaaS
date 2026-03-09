@@ -6,9 +6,9 @@
 
 ## Estado actual
 
-**Fase:** Fase 2 COMPLETA — Iniciando Fase 3: Cartera y Reportes
+**Fase:** Fase 4 pendiente — Notificaciones WhatsApp
 **Versión del documento de planificación:** v2.5
-**Última actualización:** 8 Marzo 2026 — Limpieza de código: imports sin uso, comentarios obsoletos y archivos temporales eliminados. Tests siguen en verde.
+**Última actualización:** 8 Marzo 2026 — Fase 3 completada y testeada: cartera_service, pdf_service, routers cartera y reportes, plantillas PDF + test_fase3.py (8 secciones, todos pasaron).
 
 ---
 
@@ -53,11 +53,12 @@
 
 ---
 
-## Fase 3 — Cartera y Reportes (Semana 11-13)
+## Fase 3 — Cartera y Reportes (Semana 11-13) ✅ COMPLETA
 
-- [ ] Vista de cartera por conjunto
-- [ ] Estado de cuenta por propiedad
-- [ ] Generación de PDFs (paz y salvo, estado de cuenta) — WeasyPrint
+- [x] Vista de cartera por conjunto — `GET /api/cartera` → `services/cartera_service.py` + `routers/cartera.py`
+- [x] Estado de cuenta por propiedad — `GET /api/cartera/propiedad/{id}` + antigüedad `GET /api/cartera/antiguedad`
+- [x] Generación de PDFs (paz y salvo, estado de cuenta, cartera) — WeasyPrint + `services/pdf_service.py` + `routers/reportes.py`
+- [x] Tests Fase 3 — `test_fase3.py` 8 secciones, todos pasan ✅ (PDFs salteados en Windows, funcionan en Railway)
 
 ---
 
@@ -129,8 +130,17 @@
 | `ph_saas/templates/sa/suscripciones.html` | ✅ Creado |
 | `ph_saas/templates/app/propiedades.html` | ✅ Creado |
 | `test_fase2.py` | ✅ Suite de tests Fase 2 — 11 secciones, todos pasaron |
+| `ph_saas/schemas/cartera.py` | ✅ Creado (ResumenCartera, EstadoCuentaPropiedad, CarteraAntiguedadItem) |
+| `ph_saas/services/cartera_service.py` | ✅ Creado (get_resumen_cartera, get_estado_cuenta, get_cartera_antiguedad) |
+| `ph_saas/routers/cartera.py` | ✅ Creado (GET /api/cartera, /api/cartera/antiguedad, /api/cartera/propiedad/{id}) |
+| `ph_saas/services/pdf_service.py` | ✅ Creado (generar_estado_cuenta_pdf, generar_paz_y_salvo_pdf, generar_cartera_pdf) |
+| `ph_saas/routers/reportes.py` | ✅ Creado (GET /api/reportes/estado-cuenta, /paz-y-salvo, /cartera) |
+| `ph_saas/templates/pdf/estado_cuenta.html` | ✅ Creado |
+| `ph_saas/templates/pdf/paz_y_salvo.html` | ✅ Creado |
+| `ph_saas/templates/pdf/cartera.html` | ✅ Creado |
 | `ph_saas/templates/app/usuarios.html` | ✅ Creado |
 | `ph_saas/templates/app/configuracion.html` | ✅ Creado |
+| `test_fase3.py` | ✅ Suite de tests Fase 3 — 8 secciones, todos pasaron |
 
 ---
 
@@ -147,7 +157,7 @@
 | Trigger generación cuotas | cron-job.org día 1 (no APScheduler) |
 | Python 3.14 + SQLAlchemy 2.0.35 | `from __future__ import annotations` en todos los modelos — resuelve incompatibilidad de tipos `X \| Y` |
 | Saldo a favor excedente | Split automático en transacción atómica |
-| dia_generacion_cuota UI | Oculto, reservado fase futura |
+| WeasyPrint import lazy | `from weasyprint import HTML` dentro de cada función (no a nivel de módulo) — evita fallo en Windows sin GTK. En Railway (Linux) funciona en runtime |
 | Notificaciones | Solo WhatsApp via Twilio |
 | Cobro SaaS | Transferencia manual mensual |
 | Supabase JWT (ES256) | Proyectos nuevos de Supabase usan ES256 (ECDSA), no HS256. Verificación via JWKS: `{SUPABASE_URL}/auth/v1/.well-known/jwks.json`. Cacheado al startup. |

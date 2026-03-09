@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10pt;
+    color: #1a1a1a;
+    padding: 40px 48px;
+  }
+
+  /* ── Encabezado ── */
+  .header {
+    border-bottom: 2px solid #1e3a5f;
+    padding-bottom: 12px;
+    margin-bottom: 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .header .title { font-size: 15pt; font-weight: bold; color: #1e3a5f; }
+  .header .meta  { text-align: right; font-size: 9pt; color: #555; }
+
+  /* ── Caja de resultado ── */
+  .result-box {
+    border-radius: 6px;
+    padding: 28px 32px;
+    margin-bottom: 28px;
+    text-align: center;
+  }
+  .result-box.al-dia {
+    background: #e6f4ea;
+    border: 2px solid #9ae6b4;
+  }
+  .result-box.con-deuda {
+    background: #fff5f5;
+    border: 2px solid #fc8181;
+  }
+  .result-box .result-title {
+    font-size: 18pt;
+    font-weight: bold;
+    margin-bottom: 6px;
+  }
+  .result-box.al-dia  .result-title { color: #276749; }
+  .result-box.con-deuda .result-title { color: #c53030; }
+  .result-box .result-sub { font-size: 10pt; color: #555; }
+
+  /* ── Info de la propiedad ── */
+  .info-box {
+    background: #f4f7fb;
+    border: 1px solid #c8d8ea;
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    display: flex;
+    gap: 48px;
+  }
+  .info-box .label { font-size: 8pt; color: #666; text-transform: uppercase; letter-spacing: 0.05em; }
+  .info-box .value { font-size: 11pt; font-weight: bold; color: #1e3a5f; }
+
+  /* ── Tabla de deuda pendiente (solo si hay deuda) ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 9pt;
+  }
+  thead th {
+    background: #1e3a5f;
+    color: #fff;
+    padding: 7px 8px;
+    text-align: left;
+    font-size: 8.5pt;
+  }
+  thead th.right { text-align: right; }
+  tbody tr:nth-child(even) { background: #f9fbfd; }
+  tbody td { padding: 6px 8px; border-bottom: 1px solid #e0e7ef; }
+  tbody td.right { text-align: right; }
+
+  /* ── Certificación ── */
+  .cert-box {
+    background: #f4f7fb;
+    border: 1px solid #c8d8ea;
+    border-radius: 4px;
+    padding: 16px 20px;
+    font-size: 9.5pt;
+    line-height: 1.6;
+    margin-bottom: 28px;
+  }
+
+  /* ── Firma ── */
+  .firma-area {
+    display: flex;
+    gap: 80px;
+    margin-top: 40px;
+  }
+  .firma-linea {
+    border-top: 1px solid #333;
+    width: 200px;
+    padding-top: 6px;
+    font-size: 8.5pt;
+    color: #555;
+  }
+
+  /* ── Pie de página ── */
+  .footer {
+    border-top: 1px solid #ddd;
+    margin-top: 28px;
+    padding-top: 8px;
+    font-size: 7.5pt;
+    color: #999;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- Encabezado -->
+<div class="header">
+  <div>
+    <div class="title">Paz y Salvo</div>
+    <div style="color:#555; font-size:10pt; margin-top:2px;">{{ conjunto_nombre }}</div>
+  </div>
+  <div class="meta">
+    Fecha de expedición: {{ fecha_generacion }}<br/>
+    Apto. / Casa: <strong>{{ estado.numero_apartamento }}</strong>
+  </div>
+</div>
+
+<!-- Resultado principal -->
+{% if al_dia %}
+<div class="result-box al-dia">
+  <div class="result-title">✓ A Paz y Salvo</div>
+  <div class="result-sub">La propiedad no registra deuda pendiente a la fecha de expedición de este documento.</div>
+</div>
+{% else %}
+<div class="result-box con-deuda">
+  <div class="result-title">✗ Con Saldo Pendiente</div>
+  <div class="result-sub">La propiedad registra saldo pendiente de pago. No se puede expedir paz y salvo.</div>
+</div>
+{% endif %}
+
+<!-- Info de la propiedad -->
+<div class="info-box">
+  <div>
+    <div class="label">Conjunto</div>
+    <div class="value">{{ conjunto_nombre }}</div>
+  </div>
+  <div>
+    <div class="label">Propiedad</div>
+    <div class="value">Apto. {{ estado.numero_apartamento }}</div>
+  </div>
+  {% if al_dia and estado.saldo_a_favor_disponible > 0 %}
+  <div>
+    <div class="label">Saldo a favor disponible</div>
+    <div class="value" style="color:#276749;">{{ fmt_cop(estado.saldo_a_favor_disponible) }}</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Tabla de deuda si la hay -->
+{% if not al_dia %}
+<p style="font-weight:bold; margin-bottom:8px; color:#c53030;">Detalle de obligaciones pendientes:</p>
+<table>
+  <thead>
+    <tr>
+      <th>Período</th>
+      <th>Vencimiento</th>
+      <th class="right">Cuota base</th>
+      <th class="right">Interés</th>
+      <th class="right">Saldo pendiente</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in estado.cuotas %}
+    {% if c.estado != 'Pagada' and c.saldo_pendiente > 0 %}
+    <tr>
+      <td>{{ c.periodo }}</td>
+      <td>{{ c.fecha_vencimiento.strftime('%d/%m/%Y') }}</td>
+      <td class="right">{{ fmt_cop(c.valor_base) }}</td>
+      <td class="right">{{ fmt_cop(c.interes_generado) }}</td>
+      <td class="right"><strong>{{ fmt_cop(c.saldo_pendiente) }}</strong></td>
+    </tr>
+    {% endif %}
+    {% endfor %}
+  </tbody>
+</table>
+<p style="text-align:right; font-weight:bold; font-size:11pt; color:#c53030; margin-bottom:20px;">
+  Total deuda: {{ fmt_cop(estado.total_deuda) }}
+</p>
+{% endif %}
+
+<!-- Texto de certificación -->
+{% if al_dia %}
+<div class="cert-box">
+  El administrador del <strong>{{ conjunto_nombre }}</strong> certifica que la propiedad
+  <strong>Apartamento / Casa {{ estado.numero_apartamento }}</strong>
+  se encuentra a <strong>Paz y Salvo</strong> por concepto de cuotas de administración
+  a la fecha de expedición de este documento.
+</div>
+{% else %}
+<div class="cert-box">
+  El administrador del <strong>{{ conjunto_nombre }}</strong> informa que la propiedad
+  <strong>Apartamento / Casa {{ estado.numero_apartamento }}</strong>
+  <strong>no puede recibir esta certificación</strong> por registrar obligaciones pendientes
+  de pago a la fecha de expedición de este documento.
+</div>
+{% endif %}
+
+<!-- Área de firma -->
+<div class="firma-area">
+  <div>
+    <div class="firma-linea">Administrador(a)</div>
+    <div style="font-size:8pt; color:#888; margin-top:2px;">{{ conjunto_nombre }}</div>
+  </div>
+</div>
+
+<div class="footer">
+  Documento generado por el sistema PH SaaS · {{ fecha_generacion }} ·
+  Válido únicamente en la fecha indicada. No es transferible ni tiene validez como recibo de pago.
+</div>
+
+</body>
+</html>
