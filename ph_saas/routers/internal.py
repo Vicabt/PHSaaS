@@ -20,6 +20,10 @@ from ph_saas.database import get_db
 from ph_saas.errors import ErrorMsg, http_401
 from ph_saas.models.conjunto import Conjunto
 from ph_saas.services.cuota_service import calcular_intereses, generar_cuotas
+from ph_saas.services.whatsapp_service import (
+    notificar_cuotas_generadas,
+    notificar_mora_conjunto,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,10 +63,12 @@ def generar_cuotas_todos(
     for conjunto in conjuntos:
         try:
             cuotas = generar_cuotas(db, conjunto.id, periodo)
+            mensajes_enviados = notificar_cuotas_generadas(db, conjunto.id, cuotas, conjunto.nombre)
             resultados.append({
                 "conjunto_id": str(conjunto.id),
                 "nombre": conjunto.nombre,
                 "cuotas_generadas": len(cuotas),
+                "notificaciones_enviadas": mensajes_enviados,
             })
         except ValueError as e:
             logger.error(f"[internal] Error generando cuotas para {conjunto.id}: {e}")
@@ -114,3 +120,40 @@ def calcular_intereses_todos(
 
     logger.info(f"[internal] calcular-intereses completado, mes {mes_ejecucion}: {len(resultados)} conjuntos")
     return {"mes_ejecucion": mes_ejecucion, "resultados": resultados}
+
+
+@router.post("/notificar-mora")
+def notificar_mora_todos(
+    db: Session = Depends(get_db),
+    _: None = Depends(verify_internal_token),
+):
+    """
+    Envia recordatorio de mora via WhatsApp a propietarios con cuotas vencidas.
+    Debe invocarse desde cron-job.org el dia configurable de cada mes.
+    Itera todos los conjuntos activos.
+    """
+    conjuntos = (
+        db.query(Conjunto)
+        .filter(Conjunto.is_deleted == False)  # noqa: E712
+        .all()
+    )
+
+    resultados = []
+    for conjunto in conjuntos:
+        try:
+            enviados = notificar_mora_conjunto(db, conjunto.id, conjunto.nombre)
+            resultados.append({
+                "conjunto_id": str(conjunto.id),
+                "nombre": conjunto.nombre,
+                "notificaciones_enviadas": enviados,
+            })
+        except Exception as e:
+            logger.error(f"[internal] Error notificando mora para {conjunto.id}: {e}")
+            resultados.append({
+                "conjunto_id": str(conjunto.id),
+                "nombre": conjunto.nombre,
+                "error": str(e),
+            })
+
+    logger.info(f"[internal] notificar-mora completado: {len(resultados)} conjuntos procesados")
+    return {"resultados": resultados}

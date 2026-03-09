@@ -16,11 +16,15 @@ from sqlalchemy.orm import Session
 from ph_saas.database import get_db
 from ph_saas.dependencies import CurrentUser, require_role
 from ph_saas.errors import ErrorMsg, http_404
+from ph_saas.models.conjunto import Conjunto
+from ph_saas.models.propiedad import Propiedad
+from ph_saas.models.usuario import Usuario
 from ph_saas.services.pdf_service import (
     generar_cartera_pdf,
     generar_estado_cuenta_pdf,
     generar_paz_y_salvo_pdf,
 )
+from ph_saas.services.whatsapp_service import notificar_paz_y_salvo
 
 router = APIRouter(prefix="/api/reportes", tags=["reportes"])
 
@@ -54,6 +58,27 @@ def reporte_paz_y_salvo(
     pdf = generar_paz_y_salvo_pdf(db, current_user.conjunto_id, propiedad_id)
     if pdf is None:
         raise http_404(ErrorMsg.PROPIEDAD_NOT_FOUND)
+
+    # Notificacion WhatsApp al propietario — no bloquea si falla
+    try:
+        propiedad = (
+            db.query(Propiedad)
+            .filter(Propiedad.id == propiedad_id, Propiedad.conjunto_id == current_user.conjunto_id)
+            .first()
+        )
+        if propiedad and propiedad.propietario_id:
+            usuario = db.query(Usuario).filter(Usuario.id == propiedad.propietario_id).first()
+            conjunto = db.query(Conjunto).filter(Conjunto.id == current_user.conjunto_id).first()
+            if usuario and conjunto:
+                notificar_paz_y_salvo(
+                    usuario.telefono_ws,
+                    conjunto.nombre,
+                    propiedad.numero_apartamento,
+                )
+    except Exception as exc:
+        import logging as _log
+        _log.getLogger(__name__).warning(f"[reportes] No se pudo enviar notificacion paz y salvo: {exc}")
+
     return Response(
         content=pdf,
         media_type="application/pdf",

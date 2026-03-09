@@ -18,6 +18,7 @@ class Usuario(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     cedula: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
     nombre: Mapped[str] = mapped_column(String(100), nullable=False)
+    apellido: Mapped[str | None] = mapped_column(String(100), nullable=True)
     correo: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     telefono_ws: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

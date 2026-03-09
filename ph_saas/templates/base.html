@@ -53,6 +53,7 @@
           </svg>
           Propiedades
         </a>
+        {% if user_rol == 'Administrador' %}
         <a href="/panel/app/usuarios"
            class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition
                   {% if active == 'usuarios' %}bg-indigo-700 text-white{% else %}text-indigo-200 hover:bg-indigo-800{% endif %}">
@@ -62,6 +63,7 @@
           </svg>
           Usuarios
         </a>
+        {% endif %}
         <a href="/panel/app/configuracion"
            class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition
                   {% if active == 'configuracion' %}bg-indigo-700 text-white{% else %}text-indigo-200 hover:bg-indigo-800{% endif %}">

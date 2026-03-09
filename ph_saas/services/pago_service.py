@@ -20,13 +20,16 @@ from sqlalchemy.orm import Session
 
 from ph_saas.config import BOGOTA_TZ
 from ph_saas.errors import ErrorMsg, http_400, http_404
+from ph_saas.models.conjunto import Conjunto
 from ph_saas.models.cuota import Cuota
 from ph_saas.models.movimiento_contable import MovimientoContable
 from ph_saas.models.pago import Pago
 from ph_saas.models.pago_detalle import PagoDetalle
 from ph_saas.models.propiedad import Propiedad
 from ph_saas.models.saldo_a_favor import SaldoAFavor
+from ph_saas.models.usuario import Usuario
 from ph_saas.schemas.pago import PagoCreate
+from ph_saas.services.whatsapp_service import notificar_confirmacion_pago
 
 logger = logging.getLogger(__name__)
 
@@ -209,7 +212,32 @@ def registrar_pago(db: Session, conjunto_id: uuid.UUID, pago_in: PagoCreate) -> 
     db.commit()
     db.refresh(pago)
     logger.info(f"[pago_service] Pago registrado: {pago.id} — total {pago_in.valor_total}")
+
+    # Notificacion WhatsApp — no bloquea si falla
+    try:
+        _enviar_confirmacion_pago_ws(db, propiedad, conjunto_id, pago)
+    except Exception as exc:
+        logger.warning(f"[pago_service] No se pudo enviar notificacion WS: {exc}")
+
     return pago
+
+
+def _enviar_confirmacion_pago_ws(db: Session, propiedad: Propiedad, conjunto_id: uuid.UUID, pago: Pago) -> None:
+    """Helper: envia la confirmacion de pago WhatsApp sin afectar la transaccion principal."""
+    conjunto = db.query(Conjunto).filter(Conjunto.id == conjunto_id).first()
+    conjunto_nombre = conjunto.nombre if conjunto else ""
+    propietario_tel = None
+    if propiedad.propietario_id:
+        usuario = db.query(Usuario).filter(Usuario.id == propiedad.propietario_id).first()
+        if usuario:
+            propietario_tel = usuario.telefono_ws
+    notificar_confirmacion_pago(
+        propietario_tel,
+        conjunto_nombre,
+        propiedad.numero_apartamento,
+        pago.valor_total,
+        pago.fecha_pago,
+    )
 
 
 # ── Anular pago ────────────────────────────────────────────────────────────────

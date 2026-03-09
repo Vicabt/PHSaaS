@@ -6,9 +6,9 @@
 
 ## Estado actual
 
-**Fase:** Fase 4 pendiente — Notificaciones WhatsApp
+**Fase:** PROYECTO COMPLETO - Todas las fases implementadas y testeadas
 **Versión del documento de planificación:** v2.5
-**Última actualización:** 8 Marzo 2026 — Fase 3 completada y testeada: cartera_service, pdf_service, routers cartera y reportes, plantillas PDF + test_fase3.py (8 secciones, todos pasaron).
+**Última actualización:** 8 Marzo 2026 — Fase 4 completada: whatsapp_service, integración en generar-cuotas, pago_service y reportes. Nuevo endpoint /internal/notificar-mora. test_fase4.py (7 secciones, todos pasaron).
 
 ---
 
@@ -50,6 +50,7 @@
 - [x] Endpoints `/internal/generar-cuotas` y `/internal/calcular-intereses` con `X-Internal-Token` — `routers/internal.py`
 - [ ] Configurar cron-job.org → `/internal/generar-cuotas` día 1
 - [ ] Configurar cron-job.org → `/internal/calcular-intereses` día 5
+- [ ] Configurar cron-job.org → `/internal/notificar-mora` día `dia_notificacion_mora` por conjunto
 
 ---
 
@@ -62,12 +63,14 @@
 
 ---
 
-## Fase 4 — Notificaciones (Semana 14-15)
+## Fase 4 — Notificaciones (Semana 14-15) ✅ COMPLETA
 
-- [ ] Integración Twilio WhatsApp (pruebas en sandbox)
-- [ ] Notificación de cuota generada
-- [ ] Notificación de mora
-- [ ] Confirmación de pago
+- [x] Integración Twilio WhatsApp (modo degradado sin credenciales en dev, funciona con credenciales en Railway)
+- [x] Notificación de cuota generada — hook en `generar_cuotas_todos` + `notificar_cuotas_generadas()`
+- [x] Recordatorio de mora — endpoint `POST /internal/notificar-mora` + `notificar_mora_conjunto()`
+- [x] Confirmación de pago — hook en `registrar_pago` + `notificar_confirmacion_pago()`
+- [x] Mensaje de paz y salvo — hook en `reporte_paz_y_salvo` + `notificar_paz_y_salvo()`
+- [x] Tests Fase 4 — `test_fase4.py` 7 secciones, todos pasan ✅
 
 ---
 
@@ -112,10 +115,10 @@
 | `ph_saas/schemas/cuota.py` | ✅ Creado (CuotaOut, CuotaDetalle, CuotaGenerarRequest) |
 | `ph_saas/schemas/pago.py` | ✅ Creado (PagoCreate, PagoOut, PagoConDetalle, PagoDetalleIn/Out, SaldoAFavorOut, AplicarSaldoRequest) |
 | `ph_saas/services/cuota_service.py` | ✅ Creado (generar_cuotas, calcular_intereses, marcar_cuotas_vencidas) |
-| `ph_saas/services/pago_service.py` | ✅ Creado (registrar_pago, anular_pago, aplicar_saldo_a_favor) |
+| `ph_saas/services/pago_service.py` | ✅ Creado (registrar_pago, anular_pago, aplicar_saldo_a_favor, notificar_confirmacion_pago) |
 | `ph_saas/routers/cuotas.py` | ✅ Creado (GET/POST endpoints cuotas) |
 | `ph_saas/routers/pagos.py` | ✅ Creado (GET/POST/DELETE pagos + saldos a favor) |
-| `ph_saas/routers/internal.py` | ✅ Creado (/internal/generar-cuotas, /internal/calcular-intereses) |
+| `ph_saas/routers/internal.py` | ✅ Creado (/internal/generar-cuotas, /internal/calcular-intereses, /internal/notificar-mora) |
 | `ph_saas/schemas/conjunto.py` | ✅ Creado (ConjuntoCreate/Update/Out/Detalle, SuscripcionCreate/Out) |
 | `ph_saas/schemas/propiedad.py` | ✅ Creado (PropiedadCreate/Update/Out/Detalle) |
 | `ph_saas/schemas/usuario.py` | ✅ Creado (UsuarioCreate/Update/Out, UsuarioConjuntoOut, CambiarRolBody) |
@@ -134,13 +137,15 @@
 | `ph_saas/services/cartera_service.py` | ✅ Creado (get_resumen_cartera, get_estado_cuenta, get_cartera_antiguedad) |
 | `ph_saas/routers/cartera.py` | ✅ Creado (GET /api/cartera, /api/cartera/antiguedad, /api/cartera/propiedad/{id}) |
 | `ph_saas/services/pdf_service.py` | ✅ Creado (generar_estado_cuenta_pdf, generar_paz_y_salvo_pdf, generar_cartera_pdf) |
-| `ph_saas/routers/reportes.py` | ✅ Creado (GET /api/reportes/estado-cuenta, /paz-y-salvo, /cartera) |
+| `ph_saas/routers/reportes.py` | ✅ Creado (GET /api/reportes/estado-cuenta, /paz-y-salvo, /cartera) + hook WS notificar_paz_y_salvo |
 | `ph_saas/templates/pdf/estado_cuenta.html` | ✅ Creado |
 | `ph_saas/templates/pdf/paz_y_salvo.html` | ✅ Creado |
 | `ph_saas/templates/pdf/cartera.html` | ✅ Creado |
 | `ph_saas/templates/app/usuarios.html` | ✅ Creado |
 | `ph_saas/templates/app/configuracion.html` | ✅ Creado |
 | `test_fase3.py` | ✅ Suite de tests Fase 3 — 8 secciones, todos pasaron |
+| `ph_saas/services/whatsapp_service.py` | ✅ Creado (Twilio WA, modo degradado, notificar_cuotas_generadas, mora, pago, paz_y_salvo) |
+| `test_fase4.py` | ✅ Suite de tests Fase 4 — 7 secciones, todos pasaron |
 
 ---
 
@@ -174,7 +179,7 @@
 4. Cron dinámico por conjunto — usar `dia_generacion_cuota` cuando se implemente
 5. Integración Wompi — cobro automático SaaS para +10 conjuntos
 6. JWKS cache — actualmente en memoria del proceso; al reiniciar se recarga. Para producción con múltiples workers, considerar Redis o cache persistente.
-7. Scripts de debug en raíz — `debug_auth.py`, `create_superadmin.py`, `fix_superadmin.py`, `debug_jwt.py`, `debug_jwt2.py`, `debug_direct.py` — **PENDIENTE ELIMINAR antes del deploy a producción.** Útiles localmente como referencia de Railway/Auth.
+7. ~~Scripts de debug en raíz — `debug_auth.py`, `create_superadmin.py`, `fix_superadmin.py`, `debug_jwt.py`, `debug_jwt2.py`, `debug_direct.py`~~ — **ELIMINADOS** (limpieza Fase 4).
 
 ---
 

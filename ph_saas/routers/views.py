@@ -104,6 +104,18 @@ def _redir(path: str, success: str = None, error: str = None) -> RedirectRespons
     return RedirectResponse(url=f"{path}{qs}", status_code=302)
 
 
+def _get_user_rol(user_id: uuid.UUID, conjunto_id: Optional[uuid.UUID], db) -> str:
+    """Retorna el rol del usuario en el conjunto activo, o '' si no aplica."""
+    if not conjunto_id:
+        return ""
+    uc = db.query(UsuarioConjunto).filter(
+        UsuarioConjunto.usuario_id == user_id,
+        UsuarioConjunto.conjunto_id == conjunto_id,
+        UsuarioConjunto.is_deleted == False,  # noqa: E712
+    ).first()
+    return uc.rol if uc else ""
+
+
 # == GET / -- Login =============================================================
 
 @router.get("/", response_class=HTMLResponse)
@@ -527,11 +539,13 @@ def app_propiedades(request: Request):
             for p in propiedades
         ]
 
+        user_rol = _get_user_rol(user.id, conjunto_id, db)
         response = templates.TemplateResponse("app/propiedades.html", {
             "request": request,
             "user": user,
             "propiedades": props_data,
             "conjunto_nombre": cj_nombre,
+            "user_rol": user_rol,
             "success": request.query_params.get("success"),
             "error": request.query_params.get("error"),
             "active": "propiedades",
@@ -658,6 +672,16 @@ def app_usuarios(request: Request):
 
     db = SessionLocal()
     try:
+        # Solo Administrador puede gestionar usuarios
+        uc_self = db.query(UsuarioConjunto).filter(
+            UsuarioConjunto.usuario_id == user.id,
+            UsuarioConjunto.conjunto_id == conjunto_id,
+            UsuarioConjunto.is_deleted == False,  # noqa: E712
+        ).first()
+        if not uc_self or uc_self.rol != "Administrador":
+            return _redir("/panel/app/propiedades", error="Solo administradores pueden gestionar usuarios")
+        user_rol = uc_self.rol
+
         uc_rows = (
             db.query(UsuarioConjunto)
             .join(Usuario, Usuario.id == UsuarioConjunto.usuario_id)
@@ -679,7 +703,7 @@ def app_usuarios(request: Request):
             {
                 "id": str(uc.usuario_id),
                 "nombre": uc.usuario.nombre,
-                "apellido": uc.usuario.apellido,
+                "apellido": uc.usuario.apellido or "",
                 "correo": uc.usuario.correo,
                 "rol": uc.rol,
             }
@@ -691,6 +715,7 @@ def app_usuarios(request: Request):
             "user": user,
             "usuarios": usuarios_data,
             "conjunto_nombre": cj_nombre,
+            "user_rol": user_rol,
             "roles": ROLES_VALIDOS,
             "success": request.query_params.get("success"),
             "error": request.query_params.get("error"),
@@ -874,11 +899,13 @@ def app_configuracion(request: Request):
                 "permitir_interes": config.permitir_interes,
             }
 
+        user_rol = _get_user_rol(user.id, conjunto_id, db)
         response = templates.TemplateResponse("app/configuracion.html", {
             "request": request,
             "user": user,
             "config": config_data,
             "conjunto_nombre": cj_nombre,
+            "user_rol": user_rol,
             "success": request.query_params.get("success"),
             "error": request.query_params.get("error"),
             "active": "configuracion",
