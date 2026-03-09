@@ -9,11 +9,13 @@
   editId: null,
   editNumero: '',
   editEstado: '',
+  editPropietarioId: '',
   deleteId: null,
-  openEdit(id, numero, estado) {
+  openEdit(id, numero, estado, propietarioId) {
     this.editId = id;
     this.editNumero = numero;
     this.editEstado = estado;
+    this.editPropietarioId = propietarioId;
   },
   openDelete(id) { this.deleteId = id; },
 }">
@@ -54,7 +56,7 @@
             </span>
           </td>
           <td class="px-4 py-3 text-right space-x-2">
-            <button @click="openEdit('{{ p.id }}', '{{ p.numero_apartamento|e }}', '{{ p.estado }}')"
+            <button @click="openEdit('{{ p.id }}', '{{ p.numero_apartamento|e }}', '{{ p.estado }}', '{{ p.propietario_id }}')"
                     class="text-indigo-600 hover:text-indigo-800 text-xs font-medium">Editar</button>
             <button @click="openDelete('{{ p.id }}')"
                     class="text-red-500 hover:text-red-700 text-xs font-medium">Eliminar</button>
@@ -92,6 +94,16 @@
             <option value="Inactivo">Inactivo</option>
           </select>
         </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Propietario</label>
+          <select name="propietario_id"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">-- Sin propietario --</option>
+            {% for u in usuarios_lista %}
+            <option value="{{ u.id }}">{{ u.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
         <div class="flex gap-3 pt-2">
           <button type="button" @click="showCreate = false"
                   class="flex-1 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 transition">
@@ -126,6 +138,16 @@
                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <option value="Activo">Activo</option>
             <option value="Inactivo">Inactivo</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Propietario</label>
+          <select name="propietario_id" x-model="editPropietarioId"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">-- Sin propietario --</option>
+            {% for u in usuarios_lista %}
+            <option value="{{ u.id }}">{{ u.nombre }}</option>
+            {% endfor %}
           </select>
         </div>
         <div class="flex gap-3 pt-2">

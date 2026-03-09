@@ -531,8 +531,9 @@ def app_propiedades(request: Request):
                 "id": str(p.id),
                 "numero_apartamento": p.numero_apartamento,
                 "estado": p.estado,
+                "propietario_id": str(p.propietario_id) if p.propietario_id else "",
                 "propietario": (
-                    f"{p.propietario.nombre} {p.propietario.apellido}"
+                    f"{p.propietario.nombre} {p.propietario.apellido or ''}".strip()
                     if p.propietario_id and p.propietario else None
                 ),
             }
@@ -540,12 +541,30 @@ def app_propiedades(request: Request):
         ]
 
         user_rol = _get_user_rol(user.id, conjunto_id, db)
+
+        # Lista de usuarios del conjunto para asignar propietario
+        uc_usuarios = (
+            db.query(UsuarioConjunto)
+            .join(Usuario, Usuario.id == UsuarioConjunto.usuario_id)
+            .filter(
+                UsuarioConjunto.conjunto_id == conjunto_id,
+                UsuarioConjunto.is_deleted == False,  # noqa: E712
+                Usuario.is_deleted == False,  # noqa: E712
+            )
+            .all()
+        )
+        usuarios_lista = [
+            {"id": str(uc.usuario_id), "nombre": f"{uc.usuario.nombre} {uc.usuario.apellido or ''}" .strip()}
+            for uc in uc_usuarios
+        ]
+
         response = templates.TemplateResponse("app/propiedades.html", {
             "request": request,
             "user": user,
             "propiedades": props_data,
             "conjunto_nombre": cj_nombre,
             "user_rol": user_rol,
+            "usuarios_lista": usuarios_lista,
             "success": request.query_params.get("success"),
             "error": request.query_params.get("error"),
             "active": "propiedades",
@@ -560,6 +579,7 @@ def app_crear_propiedad(
     request: Request,
     numero_apartamento: str = Form(...),
     estado: str = Form("Activo"),
+    propietario_id: str = Form(""),
 ):
     user = _get_user(request)
     if not user:
@@ -567,6 +587,13 @@ def app_crear_propiedad(
     conjunto_id = _get_conjunto_id(request)
     if not conjunto_id:
         return _redir("/panel/app/propiedades", error="Sin conjunto activo")
+
+    prop_uuid = None
+    if propietario_id.strip():
+        try:
+            prop_uuid = uuid.UUID(propietario_id.strip())
+        except ValueError:
+            return _redir("/panel/app/propiedades", error="Propietario invalido")
 
     db = SessionLocal()
     try:
@@ -582,6 +609,7 @@ def app_crear_propiedad(
             conjunto_id=conjunto_id,
             numero_apartamento=numero_apartamento.strip(),
             estado=estado,
+            propietario_id=prop_uuid,
         )
         db.add(nueva)
         db.commit()
@@ -600,11 +628,19 @@ def app_editar_propiedad(
     request: Request,
     numero_apartamento: str = Form(...),
     estado: str = Form("Activo"),
+    propietario_id: str = Form(""),
 ):
     user = _get_user(request)
     if not user:
         return _redir_login()
     conjunto_id = _get_conjunto_id(request)
+
+    prop_uuid = None
+    if propietario_id.strip():
+        try:
+            prop_uuid = uuid.UUID(propietario_id.strip())
+        except ValueError:
+            return _redir("/panel/app/propiedades", error="Propietario invalido")
 
     db = SessionLocal()
     try:
@@ -619,6 +655,7 @@ def app_editar_propiedad(
 
         prop.numero_apartamento = numero_apartamento.strip()
         prop.estado = estado
+        prop.propietario_id = prop_uuid
         db.commit()
     except Exception:
         db.rollback()
@@ -890,13 +927,20 @@ def app_configuracion(request: Request):
         cj = db.query(Conjunto).filter(Conjunto.id == conjunto_id).first()
         cj_nombre = cj.nombre if cj else ""
 
-        config_data = None
+        # Si no existe configuracion, mostrar el formulario con valores por defecto
         if config:
             config_data = {
                 "valor_cuota_estandar": str(config.valor_cuota_estandar),
                 "dia_notificacion_mora": config.dia_notificacion_mora,
                 "tasa_interes_mora": str(config.tasa_interes_mora),
                 "permitir_interes": config.permitir_interes,
+            }
+        else:
+            config_data = {
+                "valor_cuota_estandar": "0.00",
+                "dia_notificacion_mora": 5,
+                "tasa_interes_mora": "0.00",
+                "permitir_interes": True,
             }
 
         user_rol = _get_user_rol(user.id, conjunto_id, db)
@@ -936,12 +980,20 @@ def app_guardar_configuracion(
             ConfiguracionConjunto.conjunto_id == conjunto_id
         ).first()
         if not config:
-            return _redir("/panel/app/configuracion", error="Configuracion no encontrada")
-
-        config.valor_cuota_estandar = valor_cuota_estandar
-        config.dia_notificacion_mora = dia_notificacion_mora
-        config.tasa_interes_mora = tasa_interes_mora
-        config.permitir_interes = (permitir_interes == "on")
+            config = ConfiguracionConjunto(
+                conjunto_id=conjunto_id,
+                valor_cuota_estandar=valor_cuota_estandar,
+                dia_generacion_cuota=1,
+                dia_notificacion_mora=dia_notificacion_mora,
+                tasa_interes_mora=tasa_interes_mora,
+                permitir_interes=(permitir_interes == "on"),
+            )
+            db.add(config)
+        else:
+            config.valor_cuota_estandar = valor_cuota_estandar
+            config.dia_notificacion_mora = dia_notificacion_mora
+            config.tasa_interes_mora = tasa_interes_mora
+            config.permitir_interes = (permitir_interes == "on")
         db.commit()
     except Exception:
         db.rollback()
