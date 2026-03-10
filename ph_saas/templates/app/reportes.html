@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Reportes — {{ conjunto_nombre }}{% endblock %}
+
+{% block content %}
+<div x-data="{
+  propiedadId: '',
+  get seleccionado() { return this.propiedadId !== ''; }
+}" class="max-w-5xl mx-auto">
+
+  <h1 class="text-2xl font-bold text-gray-800 mb-1">Reportes</h1>
+  <p class="text-sm text-gray-500 mb-6">{{ conjunto_nombre }}</p>
+
+  <!-- Alerts -->
+  {% if success %}
+  <div class="mb-4 bg-green-50 border border-green-200 text-green-800 text-sm px-4 py-3 rounded-lg">{{ success }}</div>
+  {% endif %}
+  {% if error %}
+  <div class="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">{{ error }}</div>
+  {% endif %}
+
+  <!-- Reportes por unidad -->
+  <div class="bg-white shadow-sm rounded-xl border border-gray-200 p-6 mb-6">
+    <h2 class="text-base font-semibold text-gray-700 mb-4">Reportes por unidad</h2>
+
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-gray-700 mb-1">Seleccione una unidad</label>
+      <select x-model="propiedadId"
+              class="w-full max-w-xs border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none">
+        <option value="" disabled selected>-- Seleccione --</option>
+        {% for p in propiedades %}
+        <option value="{{ p.id }}">{{ p.numero }}{% if p.propietario %} — {{ p.propietario }}{% endif %}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="flex flex-wrap gap-3">
+      <a :href="seleccionado ? `/panel/app/reportes/estado-cuenta/${propiedadId}` : '#'"
+         :class="seleccionado ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-gray-100 text-gray-400 cursor-not-allowed pointer-events-none'"
+         target="_blank"
+         class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        Estado de cuenta
+      </a>
+      <a :href="seleccionado ? `/panel/app/reportes/paz-y-salvo/${propiedadId}` : '#'"
+         :class="seleccionado ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-gray-100 text-gray-400 cursor-not-allowed pointer-events-none'"
+         target="_blank"
+         class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        Paz y salvo
+      </a>
+    </div>
+  </div>
+
+  <!-- Reporte de cartera general (solo AD y CO) -->
+  {% if user_rol in ('Administrador', 'Contador') %}
+  <div class="bg-white shadow-sm rounded-xl border border-gray-200 p-6">
+    <h2 class="text-base font-semibold text-gray-700 mb-2">Cartera general</h2>
+    <p class="text-sm text-gray-500 mb-4">Resumen de deuda de todas las unidades del conjunto.</p>
+    <a href="/panel/app/reportes/cartera" target="_blank"
+       class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-amber-500 hover:bg-amber-600 text-white transition shadow-sm">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+      Generar reporte de cartera
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

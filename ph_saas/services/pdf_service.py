@@ -37,6 +37,15 @@ def _fmt_cop(valor: Decimal | None) -> str:
     return f"$ {valor:,.0f}".replace(",", ".")
 
 
+def _render_pdf(html_str: str) -> bytes:
+    """Convierte HTML a bytes PDF usando xhtml2pdf (sin deps nativas de OS)."""
+    import io
+    from xhtml2pdf import pisa
+    dest = io.BytesIO()
+    pisa.CreatePDF(io.StringIO(html_str), dest=dest, encoding="utf-8")
+    return dest.getvalue()
+
+
 def generar_estado_cuenta_pdf(
     db: Session, conjunto_id: uuid.UUID, propiedad_id: uuid.UUID
 ) -> bytes | None:
@@ -59,8 +68,7 @@ def generar_estado_cuenta_pdf(
         fecha_generacion=date.today().strftime("%d/%m/%Y"),
         fmt_cop=_fmt_cop,
     )
-    from weasyprint import HTML  # noqa: PLC0415
-    return HTML(string=html_str).write_pdf()
+    return _render_pdf(html_str)
 
 
 def generar_paz_y_salvo_pdf(
@@ -88,8 +96,7 @@ def generar_paz_y_salvo_pdf(
         fecha_generacion=date.today().strftime("%d/%m/%Y"),
         fmt_cop=_fmt_cop,
     )
-    from weasyprint import HTML  # noqa: PLC0415
-    return HTML(string=html_str).write_pdf()
+    return _render_pdf(html_str)
 
 
 def generar_cartera_pdf(db: Session, conjunto_id: uuid.UUID) -> bytes:
@@ -111,5 +118,4 @@ def generar_cartera_pdf(db: Session, conjunto_id: uuid.UUID) -> bytes:
         fecha_generacion=date.today().strftime("%d/%m/%Y"),
         fmt_cop=_fmt_cop,
     )
-    from weasyprint import HTML  # noqa: PLC0415
-    return HTML(string=html_str).write_pdf()
+    return _render_pdf(html_str)

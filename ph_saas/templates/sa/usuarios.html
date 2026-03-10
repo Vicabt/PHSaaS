@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Usuarios — PH SaaS{% endblock %}
+{% block heading %}Usuarios por conjunto{% endblock %}
+
+{% block content %}
+<div x-data="{
+  showCreate: false,
+  editUcId: null,
+  editRol: '',
+  deleteUcId: null,
+  deleteNombre: '',
+  openEditRol(ucId, rol) {
+    this.editUcId = ucId;
+    this.editRol = rol;
+  },
+  openDelete(ucId, nombre) {
+    this.deleteUcId = ucId;
+    this.deleteNombre = nombre;
+  },
+}">
+
+  {% if success %}
+  <div class="mb-4 bg-green-50 border border-green-200 text-green-700 text-sm px-4 py-3 rounded-lg">
+    {{ success }}
+  </div>
+  {% endif %}
+  {% if error %}
+  <div class="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
+    {{ error }}
+  </div>
+  {% endif %}
+
+  <!-- Toolbar -->
+  <div class="flex items-center justify-between mb-6">
+    <p class="text-sm text-gray-500">{{ usuarios|length }} usuario(s) en total</p>
+    <button @click="showCreate = true"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition shadow-sm">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Nuevo usuario
+    </button>
+  </div>
+
+  <!-- Tabla -->
+  <div class="bg-white rounded-xl shadow-sm overflow-auto">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">Nombre</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">Correo</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">Conjunto</th>
+          <th class="px-4 py-3 text-left font-semibold text-gray-600">Rol</th>
+          <th class="px-4 py-3 text-right font-semibold text-gray-600">Acciones</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for u in usuarios %}
+        <tr class="hover:bg-gray-50 transition">
+          <td class="px-4 py-3 font-medium text-gray-800">{{ u.nombre }}</td>
+          <td class="px-4 py-3 text-gray-600">{{ u.correo }}</td>
+          <td class="px-4 py-3 text-gray-600">{{ u.conjunto_nombre }}</td>
+          <td class="px-4 py-3">
+            <span class="px-2 py-0.5 rounded-full text-xs font-medium
+              {% if u.rol == 'Administrador' %}bg-indigo-100 text-indigo-700
+              {% elif u.rol == 'Contador' %}bg-blue-100 text-blue-700
+              {% else %}bg-gray-100 text-gray-700{% endif %}">
+              {{ u.rol }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-right space-x-2">
+            <button @click="openEditRol('{{ u.uc_id }}', '{{ u.rol }}')"
+                    class="text-indigo-600 hover:text-indigo-800 text-xs font-medium">Cambiar rol</button>
+            <button @click="openDelete('{{ u.uc_id }}', '{{ u.nombre|e }}')"
+                    class="text-red-500 hover:text-red-700 text-xs font-medium">Eliminar</button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="px-4 py-8 text-center text-gray-400">No hay usuarios registrados.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+
+  <!-- Modal Crear -->
+  <div x-show="showCreate" x-cloak
+       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4"
+       @keydown.escape.window="showCreate = false">
+    <div @click.outside="showCreate = false"
+         class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+      <h2 class="text-base font-semibold text-gray-800 mb-4">Nuevo usuario</h2>
+      <form method="post" action="/panel/sa/usuarios/crear" class="space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Nombre *</label>
+            <input name="nombre" type="text" required
+                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Apellido</label>
+            <input name="apellido" type="text"
+                   class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Correo electronico *</label>
+          <input name="email" type="email" required
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Contraseña *</label>
+          <input name="password" type="password" required minlength="8"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                 placeholder="Minimo 8 caracteres" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Conjunto *</label>
+          <select name="conjunto_id" required
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">Seleccione un conjunto...</option>
+            {% for c in conjuntos %}
+            <option value="{{ c.id }}">{{ c.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Rol *</label>
+          <select name="rol" required
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="Administrador">Administrador</option>
+            <option value="Contador">Contador</option>
+            <option value="Porteria">Porteria</option>
+          </select>
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="button" @click="showCreate = false"
+                  class="flex-1 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 transition">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition">
+            Crear
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- Modal Cambiar Rol -->
+  <div x-show="editUcId !== null" x-cloak
+       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4"
+       @keydown.escape.window="editUcId = null">
+    <div @click.outside="editUcId = null"
+         class="bg-white rounded-2xl shadow-xl w-full max-w-xs p-6">
+      <h2 class="text-base font-semibold text-gray-800 mb-4">Cambiar rol</h2>
+      <form method="post" :action="`/panel/sa/usuarios/${editUcId}/rol`" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Rol</label>
+          <select name="rol" x-model="editRol"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="Administrador">Administrador</option>
+            <option value="Contador">Contador</option>
+            <option value="Porteria">Porteria</option>
+          </select>
+        </div>
+        <div class="flex gap-3">
+          <button type="button" @click="editUcId = null"
+                  class="flex-1 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 transition">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition">
+            Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- Modal Eliminar -->
+  <div x-show="deleteUcId !== null" x-cloak
+       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4"
+       @keydown.escape.window="deleteUcId = null">
+    <div @click.outside="deleteUcId = null"
+         class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+      <h2 class="text-base font-semibold text-gray-800 mb-2">Confirmar eliminacion</h2>
+      <p class="text-sm text-gray-500 mb-5">
+        El usuario <span class="font-medium text-gray-700" x-text="deleteNombre"></span> sera removido de su conjunto.
+      </p>
+      <form method="post" :action="`/panel/sa/usuarios/${deleteUcId}/eliminar`">
+        <div class="flex gap-3">
+          <button type="button" @click="deleteUcId = null"
+                  class="flex-1 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 transition">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 bg-red-600 hover:bg-red-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition">
+            Eliminar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -147,6 +147,10 @@
 | POST | `/panel/sa/suscripciones/{id}/pagar` | SA | +1 mes vencimiento |
 | POST | `/panel/sa/suscripciones/{id}/suspender` | SA | Suspender |
 | POST | `/panel/sa/suscripciones/{id}/activar` | SA | Activar |
+| GET | `/panel/sa/usuarios` | SA | Lista todos los usuarios por conjunto |
+| POST | `/panel/sa/usuarios/crear` | SA | Crear usuario y asignar rol a un conjunto |
+| POST | `/panel/sa/usuarios/{uc_id}/rol` | SA | Cambiar rol de usuario en su conjunto |
+| POST | `/panel/sa/usuarios/{uc_id}/eliminar` | SA | Remover usuario de un conjunto (soft delete) |
 | GET | `/panel/app/propiedades` | AD | Lista propiedades del conjunto |
 | POST | `/panel/app/propiedades/crear` | AD | Crear propiedad |
 | POST | `/panel/app/propiedades/{id}/editar` | AD | Editar propiedad |
@@ -157,6 +161,10 @@
 | POST | `/panel/app/usuarios/{id}/eliminar` | AD | Remover del conjunto (soft delete) |
 | GET | `/panel/app/configuracion` | AD | Ver configuración del conjunto |
 | POST | `/panel/app/configuracion` | AD | Guardar configuración |
+| GET | `/panel/app/propietarios` | AD | Lista propietarios/residentes del conjunto |
+| POST | `/panel/app/propietarios/crear` | AD | Crear propietario (usuario local sin Supabase Auth) |
+| POST | `/panel/app/propietarios/{id}/editar` | AD | Editar datos del propietario |
+| POST | `/panel/app/propietarios/{id}/eliminar` | AD | Soft delete propietario y desasignar unidades |
 
 ---
 
@@ -180,6 +188,7 @@
 | Suscripciones (gestión) | ✅ | 👁 solo ver vencimiento | ❌ | ❌ |
 | Propiedades (CRUD) | ❌ | ✅ | 👁 | 👁 |
 | Usuarios (CRUD) | ❌ | ✅ | ❌ | ❌ |
+| Propietarios/Residentes (CRUD) | ❌ | ✅ | ❌ | ❌ |
 | Configuración | ❌ | ✅ | 👁 | ❌ |
 | Cuotas | ❌ | ✅ | 👁 | 👁 solo su propiedad |
 | Pagos | ❌ | ✅ | ✅ | ❌ |

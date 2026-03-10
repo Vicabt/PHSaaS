@@ -143,6 +143,9 @@
 | `ph_saas/templates/pdf/cartera.html` | ✅ Creado |
 | `ph_saas/templates/app/usuarios.html` | ✅ Creado |
 | `ph_saas/templates/app/configuracion.html` | ✅ Creado |
+| `ph_saas/templates/app/propietarios.html` | ✅ Creado (lista + modales crear/editar/eliminar) |
+| `ph_saas/templates/sa/usuarios.html` | ✅ Creado (lista usuarios SA + modales crear/cambiar rol/eliminar) |
+| `setup_usuarios_prueba.py` | ✅ Creado — setup idempotente de 3 usuarios de prueba (Admin/Contador/Porteria) |
 | `test_fase3.py` | ✅ Suite de tests Fase 3 — 8 secciones, todos pasaron |
 | `ph_saas/services/whatsapp_service.py` | ✅ Creado (Twilio WA, modo degradado, notificar_cuotas_generadas, mora, pago, paz_y_salvo) |
 | `test_fase4.py` | ✅ Suite de tests Fase 4 — 7 secciones, todos pasaron |

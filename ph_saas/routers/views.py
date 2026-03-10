@@ -17,6 +17,11 @@ Rutas:
   POST /panel/sa/suscripciones/{id}/suspender -> SA: suspender
   POST /panel/sa/suscripciones/{id}/activar -> SA: activar
 
+  GET  /panel/sa/usuarios                   -> SA: lista usuarios por conjunto
+  POST /panel/sa/usuarios/crear             -> SA: crear usuario y asignar rol
+  POST /panel/sa/usuarios/{uc_id}/rol       -> SA: cambiar rol
+  POST /panel/sa/usuarios/{uc_id}/eliminar  -> SA: remover usuario de conjunto
+
   GET  /panel/app/propiedades               -> AD: lista propiedades
   POST /panel/app/propiedades/crear         -> AD: crear
   POST /panel/app/propiedades/{id}/editar   -> AD: editar
@@ -39,7 +44,7 @@ from typing import Optional
 
 from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from supabase import create_client
 
@@ -48,10 +53,25 @@ from ph_saas.database import SessionLocal
 from ph_saas.dependencies import _decode_jwt, CurrentUser
 from ph_saas.models.conjunto import Conjunto
 from ph_saas.models.configuracion_conjunto import ConfiguracionConjunto
+from ph_saas.models.cuota import Cuota
+from ph_saas.models.pago import Pago
+from ph_saas.models.pago_detalle import PagoDetalle
 from ph_saas.models.propiedad import Propiedad
 from ph_saas.models.suscripcion import SuscripcionSaaS
 from ph_saas.models.usuario import Usuario
 from ph_saas.models.usuario_conjunto import UsuarioConjunto
+from ph_saas.schemas.pago import PagoCreate, PagoDetalleIn
+from ph_saas.services.pago_service import registrar_pago as _registrar_pago
+from ph_saas.services.cartera_service import (
+    get_cartera_antiguedad,
+    get_estado_cuenta,
+    get_resumen_cartera,
+)
+from ph_saas.services.pdf_service import (
+    generar_cartera_pdf,
+    generar_estado_cuenta_pdf,
+    generar_paz_y_salvo_pdf,
+)
 
 router = APIRouter(tags=["vistas"])
 templates = Jinja2Templates(directory="ph_saas/templates")
@@ -498,6 +518,211 @@ def sa_activar_suscripcion(conjunto_id: uuid.UUID, request: Request):
         db.close()
 
     return _redir("/panel/sa/suscripciones", success="Suscripcion activada")
+
+
+# =============================================================================
+# SUPERADMIN -- Usuarios por conjunto
+# =============================================================================
+
+@router.get("/panel/sa/usuarios", response_class=HTMLResponse)
+def sa_usuarios(request: Request):
+    user = _get_user(request)
+    if not user or not user.is_superadmin:
+        return _redir_login()
+
+    db = SessionLocal()
+    try:
+        conjuntos = (
+            db.query(Conjunto)
+            .filter(Conjunto.is_deleted == False)  # noqa: E712
+            .order_by(Conjunto.nombre)
+            .all()
+        )
+        cj_map = {c.id: c.nombre for c in conjuntos}
+
+        uc_rows = (
+            db.query(UsuarioConjunto)
+            .join(Usuario, Usuario.id == UsuarioConjunto.usuario_id)
+            .filter(
+                UsuarioConjunto.is_deleted == False,  # noqa: E712
+                Usuario.is_deleted == False,  # noqa: E712
+            )
+            .order_by(UsuarioConjunto.conjunto_id, Usuario.nombre)
+            .all()
+        )
+
+        usuarios_data = [
+            {
+                "uc_id": str(uc.id),
+                "nombre": f"{uc.usuario.nombre} {uc.usuario.apellido or ''}".strip(),
+                "correo": uc.usuario.correo,
+                "rol": uc.rol,
+                "conjunto_nombre": cj_map.get(uc.conjunto_id, "—"),
+            }
+            for uc in uc_rows
+        ]
+
+        conjuntos_data = [{"id": str(c.id), "nombre": c.nombre} for c in conjuntos]
+
+        response = templates.TemplateResponse("sa/usuarios.html", {
+            "request": request,
+            "user": user,
+            "usuarios": usuarios_data,
+            "conjuntos": conjuntos_data,
+            "success": request.query_params.get("success"),
+            "error": request.query_params.get("error"),
+            "active": "sa_usuarios",
+        })
+    finally:
+        db.close()
+    return response
+
+
+@router.post("/panel/sa/usuarios/crear")
+def sa_crear_usuario(
+    request: Request,
+    nombre: str = Form(...),
+    apellido: str = Form(""),
+    email: str = Form(...),
+    password: str = Form(...),
+    conjunto_id: str = Form(...),
+    rol: str = Form(...),
+):
+    user = _get_user(request)
+    if not user or not user.is_superadmin:
+        return _redir_login()
+
+    if rol not in ROLES_VALIDOS:
+        return _redir("/panel/sa/usuarios", error="Rol invalido")
+
+    try:
+        cj_uuid = uuid.UUID(conjunto_id.strip())
+    except ValueError:
+        return _redir("/panel/sa/usuarios", error="Conjunto invalido")
+
+    db = SessionLocal()
+    try:
+        # Verificar que el conjunto existe
+        cj = db.query(Conjunto).filter(
+            Conjunto.id == cj_uuid, Conjunto.is_deleted == False  # noqa: E712
+        ).first()
+        if not cj:
+            return _redir("/panel/sa/usuarios", error="Conjunto no encontrado")
+
+        correo = email.strip().lower()
+        usuario_local = db.query(Usuario).filter(
+            Usuario.correo == correo,
+            Usuario.is_deleted == False,  # noqa: E712
+        ).first()
+
+        if usuario_local:
+            user_id = usuario_local.id
+        else:
+            try:
+                resp = _supabase_admin.auth.admin.create_user({
+                    "email": correo,
+                    "password": password,
+                    "email_confirm": True,
+                    "user_metadata": {
+                        "nombre": nombre.strip(),
+                        "apellido": apellido.strip(),
+                    },
+                })
+                user_id = uuid.UUID(str(resp.user.id))
+            except Exception as e:
+                return _redir("/panel/sa/usuarios", error=f"Error creando usuario en Auth: {str(e)[:80]}")
+
+            nuevo_user = Usuario(
+                id=user_id,
+                nombre=nombre.strip(),
+                apellido=apellido.strip() or None,
+                correo=correo,
+            )
+            db.add(nuevo_user)
+            db.flush()
+
+        dup = db.query(UsuarioConjunto).filter(
+            UsuarioConjunto.usuario_id == user_id,
+            UsuarioConjunto.conjunto_id == cj_uuid,
+            UsuarioConjunto.is_deleted == False,  # noqa: E712
+        ).first()
+        if dup:
+            return _redir("/panel/sa/usuarios", error="El usuario ya tiene un rol asignado en ese conjunto")
+
+        uc = UsuarioConjunto(
+            usuario_id=user_id,
+            conjunto_id=cj_uuid,
+            rol=rol,
+        )
+        db.add(uc)
+        db.commit()
+    except Exception:
+        db.rollback()
+        return _redir("/panel/sa/usuarios", error="Error al crear el usuario")
+    finally:
+        db.close()
+
+    return _redir("/panel/sa/usuarios", success=f"Usuario {nombre.strip()} creado con rol {rol} en {cj.nombre}")
+
+
+@router.post("/panel/sa/usuarios/{uc_id}/rol")
+def sa_cambiar_rol_usuario(
+    uc_id: uuid.UUID,
+    request: Request,
+    rol: str = Form(...),
+):
+    user = _get_user(request)
+    if not user or not user.is_superadmin:
+        return _redir_login()
+
+    if rol not in ROLES_VALIDOS:
+        return _redir("/panel/sa/usuarios", error="Rol invalido")
+
+    db = SessionLocal()
+    try:
+        uc = db.query(UsuarioConjunto).filter(
+            UsuarioConjunto.id == uc_id,
+            UsuarioConjunto.is_deleted == False,  # noqa: E712
+        ).first()
+        if not uc:
+            return _redir("/panel/sa/usuarios", error="Asignacion no encontrada")
+        uc.rol = rol
+        db.commit()
+    except Exception:
+        db.rollback()
+        return _redir("/panel/sa/usuarios", error="Error al cambiar rol")
+    finally:
+        db.close()
+
+    return _redir("/panel/sa/usuarios", success="Rol actualizado")
+
+
+@router.post("/panel/sa/usuarios/{uc_id}/eliminar")
+def sa_eliminar_usuario(
+    uc_id: uuid.UUID,
+    request: Request,
+):
+    user = _get_user(request)
+    if not user or not user.is_superadmin:
+        return _redir_login()
+
+    db = SessionLocal()
+    try:
+        uc = db.query(UsuarioConjunto).filter(
+            UsuarioConjunto.id == uc_id,
+            UsuarioConjunto.is_deleted == False,  # noqa: E712
+        ).first()
+        if not uc:
+            return _redir("/panel/sa/usuarios", error="Asignacion no encontrada")
+        uc.is_deleted = True
+        db.commit()
+    except Exception:
+        db.rollback()
+        return _redir("/panel/sa/usuarios", error="Error al eliminar usuario")
+    finally:
+        db.close()
+
+    return _redir("/panel/sa/usuarios", success="Usuario removido del conjunto")
 
 
 # =============================================================================
@@ -1128,6 +1353,10 @@ def app_configuracion(request: Request):
 
     db = SessionLocal()
     try:
+        user_rol = _get_user_rol(user.id, conjunto_id, db)
+        if user_rol == "Porteria":
+            return _redir("/panel/app/propiedades", error="Sin permisos para esta seccion")
+
         config = db.query(ConfiguracionConjunto).filter(
             ConfiguracionConjunto.conjunto_id == conjunto_id
         ).first()
@@ -1151,7 +1380,6 @@ def app_configuracion(request: Request):
                 "permitir_interes": True,
             }
 
-        user_rol = _get_user_rol(user.id, conjunto_id, db)
         response = templates.TemplateResponse("app/configuracion.html", {
 
             "request": request,
@@ -1211,3 +1439,411 @@ def app_guardar_configuracion(
         db.close()
 
     return _redir("/panel/app/configuracion", success="Configuracion guardada correctamente")
+
+
+# =============================================================================
+# ADMINISTRADOR / CONTADOR -- Pagos
+# =============================================================================
+
+@router.get("/panel/app/pagos", response_class=HTMLResponse)
+def app_pagos(request: Request):
+    user = _get_user(request)
+    if not user:
+        return _redir_login()
+    conjunto_id = _get_conjunto_id(request)
+    if not conjunto_id:
+        return _redir_login()
+
+    db = SessionLocal()
+    try:
+        user_rol = _get_user_rol(user.id, conjunto_id, db)
+        if user_rol not in ("Administrador", "Contador"):
+            return _redir("/panel/app/propiedades", error="Sin permisos para ver pagos")
+
+        pagos = (
+            db.query(Pago)
+            .filter(Pago.conjunto_id == conjunto_id, Pago.is_deleted == False)  # noqa: E712
+            .order_by(Pago.fecha_pago.desc(), Pago.created_at.desc())
+            .limit(100)
+            .all()
+        )
+
+        propiedades = (
+            db.query(Propiedad)
+            .filter(
+                Propiedad.conjunto_id == conjunto_id,
+                Propiedad.is_deleted == False,  # noqa: E712
+                Propiedad.estado == "Activo",
+            )
+            .order_by(Propiedad.numero_apartamento)
+            .all()
+        )
+
+        # Nombre del apartamento por propiedad_id
+        prop_map = {str(p.id): p.numero_apartamento for p in propiedades}
+
+        cj = db.query(Conjunto).filter(Conjunto.id == conjunto_id).first()
+        cj_nombre = cj.nombre if cj else ""
+
+        pagos_data = [
+            {
+                "id": str(p.id),
+                "fecha_pago": p.fecha_pago.strftime("%d/%m/%Y"),
+                "apartamento": prop_map.get(str(p.propiedad_id), "—"),
+                "valor_total": str(p.valor_total),
+                "metodo_pago": p.metodo_pago,
+                "referencia": p.referencia or "—",
+            }
+            for p in pagos
+        ]
+
+        props_data = [
+            {"id": str(p.id), "numero": p.numero_apartamento}
+            for p in propiedades
+        ]
+
+        response = templates.TemplateResponse("app/pagos.html", {
+            "request": request,
+            "user": user,
+            "pagos": pagos_data,
+            "propiedades": props_data,
+            "conjunto_nombre": cj_nombre,
+            "user_rol": user_rol,
+            "success": request.query_params.get("success"),
+            "error": request.query_params.get("error"),
+            "active": "pagos",
+        })
+    finally:
+        db.close()
+    return response
+
+
+@router.post("/panel/app/pagos/registrar")
+def app_registrar_pago(
+    request: Request,
+    propiedad_id: str = Form(...),
+    fecha_pago: str = Form(...),
+    valor_total: str = Form(...),
+    metodo_pago: str = Form(...),
+    referencia: str = Form(""),
+):
+    user = _get_user(request)
+    if not user:
+        return _redir_login()
+    conjunto_id = _get_conjunto_id(request)
+    if not conjunto_id:
+        return _redir_login()
+
+    db = SessionLocal()
+    try:
+        user_rol = _get_user_rol(user.id, conjunto_id, db)
+        if user_rol not in ("Administrador", "Contador"):
+            return _redir("/panel/app/propiedades", error="Sin permisos")
+
+        try:
+            prop_uuid = uuid.UUID(propiedad_id.strip())
+            fecha = date.fromisoformat(fecha_pago.strip())
+            monto = Decimal(valor_total.strip().replace(",", "."))
+        except (ValueError, Exception):
+            return _redir("/panel/app/pagos", error="Datos del pago invalidos")
+
+        if monto <= Decimal("0"):
+            return _redir("/panel/app/pagos", error="El monto debe ser mayor a cero")
+
+        metodos_validos = {"Efectivo", "Transferencia", "PSE", "Otro"}
+        if metodo_pago not in metodos_validos:
+            return _redir("/panel/app/pagos", error="Metodo de pago invalido")
+
+        # Obtener cuotas pendientes ordenadas de mas antigua a mas nueva
+        cuotas = (
+            db.query(Cuota)
+            .filter(
+                Cuota.conjunto_id == conjunto_id,
+                Cuota.propiedad_id == prop_uuid,
+                Cuota.is_deleted == False,  # noqa: E712
+                Cuota.estado.in_(["Pendiente", "Parcial", "Vencida"]),
+            )
+            .order_by(Cuota.fecha_vencimiento.asc())
+            .all()
+        )
+
+        if not cuotas:
+            return _redir("/panel/app/pagos", error="La propiedad no tiene cuotas pendientes")
+
+        # Auto-distribuir pago (primero cuotas mas antiguas)
+        from sqlalchemy import func as _func
+        remaining = monto
+        detalles: list[PagoDetalleIn] = []
+        for cuota in cuotas:
+            if remaining <= Decimal("0"):
+                break
+            row = (
+                db.query(
+                    _func.coalesce(_func.sum(PagoDetalle.monto_a_interes), Decimal("0")),
+                    _func.coalesce(_func.sum(PagoDetalle.monto_a_capital), Decimal("0")),
+                )
+                .filter(PagoDetalle.cuota_id == cuota.id)
+                .one()
+            )
+            interes_pendiente = cuota.interes_generado - row[0]
+            capital_pendiente = cuota.valor_base - row[1]
+            deuda_total = interes_pendiente + capital_pendiente
+            if deuda_total <= Decimal("0"):
+                continue
+            abono = min(remaining, deuda_total)
+            detalles.append(PagoDetalleIn(cuota_id=cuota.id, monto_aplicado=abono))
+            remaining -= abono
+
+        pago_in = PagoCreate(
+            propiedad_id=prop_uuid,
+            fecha_pago=fecha,
+            valor_total=monto,
+            metodo_pago=metodo_pago,
+            referencia=referencia.strip() or None,
+            detalles=detalles,
+        )
+        _registrar_pago(db, conjunto_id, pago_in)
+
+        msg = "Pago registrado correctamente"
+        if remaining > Decimal("0"):
+            msg += f" — saldo a favor: ${remaining:,.2f}"
+    except Exception as exc:
+        db.rollback()
+        return _redir("/panel/app/pagos", error=f"Error al registrar pago: {str(exc)[:100]}")
+    finally:
+        db.close()
+
+    return _redir("/panel/app/pagos", success=msg)
+
+
+# =============================================================================
+# TODOS LOS ROLES APP -- Reportes PDF
+# =============================================================================
+
+@router.get("/panel/app/reportes", response_class=HTMLResponse)
+def app_reportes(request: Request):
+    user = _get_user(request)
+    if not user:
+        return _redir_login()
+    conjunto_id = _get_conjunto_id(request)
+    if not conjunto_id:
+        return _redir_login()
+
+    db = SessionLocal()
+    try:
+        user_rol = _get_user_rol(user.id, conjunto_id, db)
+        if not user_rol:
+            return _redir("/panel/app/propiedades", error="Sin permisos")
+
+        propiedades = (
+            db.query(Propiedad)
+            .filter(
+                Propiedad.conjunto_id == conjunto_id,
+                Propiedad.is_deleted == False,  # noqa: E712
+            )
+            .order_by(Propiedad.numero_apartamento)
+            .all()
+        )
+
+        cj = db.query(Conjunto).filter(Conjunto.id == conjunto_id).first()
+        cj_nombre = cj.nombre if cj else ""
+
+        props_data = [
+            {
+                "id": str(p.id),
+                "numero": p.numero_apartamento,
+                "propietario": (
+                    f"{p.propietario.nombre} {p.propietario.apellido or ''}".strip()
+                    if p.propietario_id and p.propietario else None
+                ),
+            }
+            for p in propiedades
+        ]
+
+        response = templates.TemplateResponse("app/reportes.html", {
+            "request": request,
+            "user": user,
+            "propiedades": props_data,
+            "conjunto_nombre": cj_nombre,
+            "user_rol": user_rol,
+            "success": request.query_params.get("success"),
+            "error": request.query_params.get("error"),
+            "active": "reportes",
+        })
+    finally:
+        db.close()
+    return response
+
+
+@router.get("/panel/app/reportes/estado-cuenta/{propiedad_id}")
+def app_reporte_estado_cuenta(propiedad_id: uuid.UUID, request: Request):
+    user = _get_user(request)
+    if not user:
+        return _redir_login()
+    conjunto_id = _get_conjunto_id(request)
+    if not conjunto_id:
+        return _redir("/panel/app/reportes", error="Sin conjunto activo")
+
+    db = SessionLocal()
+    try:
+        user_rol = _get_user_rol(user.id, conjunto_id, db)
+        if not user_rol:
+            return _redir("/panel/app/reportes", error="Sin permisos")
+        pdf = generar_estado_cuenta_pdf(db, conjunto_id, propiedad_id)
+    finally:
+        db.close()
+
+    if pdf is None:
+        return _redir("/panel/app/reportes", error="Propiedad no encontrada")
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename=estado_cuenta_{propiedad_id}.pdf"},
+    )
+
+
+@router.get("/panel/app/reportes/paz-y-salvo/{propiedad_id}")
+def app_reporte_paz_y_salvo(propiedad_id: uuid.UUID, request: Request):
+    user = _get_user(request)
+    if not user:
+        return _redir_login()
+    conjunto_id = _get_conjunto_id(request)
+    if not conjunto_id:
+        return _redir("/panel/app/reportes", error="Sin conjunto activo")
+
+    db = SessionLocal()
+    try:
+        user_rol = _get_user_rol(user.id, conjunto_id, db)
+        if not user_rol:
+            return _redir("/panel/app/reportes", error="Sin permisos")
+        pdf = generar_paz_y_salvo_pdf(db, conjunto_id, propiedad_id)
+    finally:
+        db.close()
+
+    if pdf is None:
+        return _redir("/panel/app/reportes", error="Propiedad no encontrada")
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename=paz_y_salvo_{propiedad_id}.pdf"},
+    )
+
+
+@router.get("/panel/app/reportes/cartera")
+def app_reporte_cartera(request: Request):
+    user = _get_user(request)
+    if not user:
+        return _redir_login()
+    conjunto_id = _get_conjunto_id(request)
+    if not conjunto_id:
+        return _redir("/panel/app/reportes", error="Sin conjunto activo")
+
+    db = SessionLocal()
+    try:
+        user_rol = _get_user_rol(user.id, conjunto_id, db)
+        if user_rol not in ("Administrador", "Contador"):
+            return _redir("/panel/app/reportes", error="Sin permisos para este reporte")
+        pdf = generar_cartera_pdf(db, conjunto_id)
+    finally:
+        db.close()
+
+    if pdf is None:
+        return _redir("/panel/app/reportes", error="Error al generar el reporte de cartera")
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": "inline; filename=cartera.pdf"},
+    )
+
+
+# =============================================================================
+# PORTERIA -- Consulta de estado de apartamentos
+# =============================================================================
+
+@router.get("/panel/app/consulta", response_class=HTMLResponse)
+def app_consulta(request: Request, buscar: str = ""):
+    user = _get_user(request)
+    if not user:
+        return _redir_login()
+    conjunto_id = _get_conjunto_id(request)
+    if not conjunto_id:
+        return _redir_login()
+
+    db = SessionLocal()
+    try:
+        user_rol = _get_user_rol(user.id, conjunto_id, db)
+        if not user_rol:
+            return _redir_login()
+
+        cj = db.query(Conjunto).filter(Conjunto.id == conjunto_id).first()
+        cj_nombre = cj.nombre if cj else ""
+
+        # Resumen global
+        resumen = get_resumen_cartera(db, conjunto_id)
+
+        # Listado de morosos con antigüedad
+        antiguedad = get_cartera_antiguedad(db, conjunto_id)
+        morosos = [
+            {
+                "id": str(item.propiedad_id),
+                "numero": item.numero_apartamento,
+                "dias_mora": item.dias_mora_max,
+                "rango": item.rango,
+                "saldo_total": str(item.saldo_total),
+            }
+            for item in sorted(antiguedad, key=lambda x: x.dias_mora_max, reverse=True)
+        ]
+
+        # Consulta de apartamento específico
+        consulta_resultado = None
+        buscar = buscar.strip()
+        if buscar:
+            prop = (
+                db.query(Propiedad)
+                .filter(
+                    Propiedad.conjunto_id == conjunto_id,
+                    Propiedad.is_deleted == False,  # noqa: E712
+                    Propiedad.numero_apartamento.ilike(f"%{buscar}%"),
+                )
+                .first()
+            )
+            if prop:
+                estado = get_estado_cuenta(db, conjunto_id, prop.id)
+                if estado:
+                    propietario_nombre = ""
+                    if prop.propietario_id and prop.propietario:
+                        propietario_nombre = f"{prop.propietario.nombre} {prop.propietario.apellido or ''}".strip()
+                    consulta_resultado = {
+                        "numero": estado.numero_apartamento,
+                        "propietario": propietario_nombre,
+                        "total_deuda": str(estado.total_deuda),
+                        "saldo_a_favor": str(estado.saldo_a_favor_disponible),
+                        "al_dia": estado.total_deuda == 0,
+                        "cuotas_pendientes": [
+                            {
+                                "periodo": c.periodo,
+                                "vencimiento": c.fecha_vencimiento.strftime("%d/%m/%Y"),
+                                "saldo": str(c.saldo_pendiente),
+                                "estado": c.estado,
+                            }
+                            for c in estado.cuotas
+                            if c.estado != "Pagada" and c.saldo_pendiente > 0
+                        ],
+                    }
+            else:
+                consulta_resultado = {"error": f'No se encontró apartamento "{buscar}"'}
+
+        response = templates.TemplateResponse("app/consulta.html", {
+            "request": request,
+            "user": user,
+            "user_rol": user_rol,
+            "conjunto_nombre": cj_nombre,
+            "resumen": resumen,
+            "morosos": morosos,
+            "consulta_resultado": consulta_resultado,
+            "buscar": buscar,
+            "active": "consulta",
+        })
+    finally:
+        db.close()
+    return response

@@ -23,6 +23,7 @@
   <!-- Toolbar -->
   <div class="flex items-center justify-between mb-6">
     <p class="text-sm text-gray-500">{{ propiedades|length }} unidad(es) — {{ conjunto_nombre }}</p>
+    {% if user_rol != 'Porteria' %}
     <button @click="showCreate = true"
             class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition shadow-sm">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -30,6 +31,7 @@
       </svg>
       Nueva unidad
     </button>
+    {% endif %}
   </div>
 
   <!-- Tabla -->
@@ -40,7 +42,9 @@
           <th class="px-4 py-3 text-left font-semibold text-gray-600">Numero / Apto</th>
           <th class="px-4 py-3 text-left font-semibold text-gray-600">Propietario</th>
           <th class="px-4 py-3 text-left font-semibold text-gray-600">Estado</th>
+          {% if user_rol != 'Porteria' %}
           <th class="px-4 py-3 text-right font-semibold text-gray-600">Acciones</th>
+          {% endif %}
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100">
@@ -55,16 +59,18 @@
               {{ p.estado }}
             </span>
           </td>
+          {% if user_rol != 'Porteria' %}
           <td class="px-4 py-3 text-right space-x-2">
             <button @click="openEdit('{{ p.id }}', '{{ p.numero_apartamento|e }}', '{{ p.estado }}', '{{ p.propietario_id }}')"
                     class="text-indigo-600 hover:text-indigo-800 text-xs font-medium">Editar</button>
             <button @click="openDelete('{{ p.id }}')"
                     class="text-red-500 hover:text-red-700 text-xs font-medium">Eliminar</button>
           </td>
+          {% endif %}
         </tr>
         {% else %}
         <tr>
-          <td colspan="4" class="px-4 py-8 text-center text-gray-400">No hay unidades registradas</td>
+          <td colspan="{% if user_rol != 'Porteria' %}4{% else %}3{% endif %}" class="px-4 py-8 text-center text-gray-400">No hay unidades registradas</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -72,6 +78,7 @@
   </div>
 
 
+  {% if user_rol != 'Porteria' %}
   <!-- Modal Crear -->
   <div x-show="showCreate" x-cloak
        class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4"
@@ -187,6 +194,8 @@
       </form>
     </div>
   </div>
+
+  {% endif %}
 
 </div>
 {% endblock %}

@@ -13,25 +13,21 @@
 
   /* ── Encabezado ── */
   .header {
+    width: 100%;
+    border-collapse: collapse;
     border-bottom: 2px solid #1e3a5f;
-    padding-bottom: 10px;
     margin-bottom: 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
   }
   .header .title { font-size: 15pt; font-weight: bold; color: #1e3a5f; }
   .header .meta  { text-align: right; font-size: 9pt; color: #555; }
 
   /* ── Datos de la propiedad ── */
   .info-box {
+    width: 100%;
+    border-collapse: collapse;
     background: #f4f7fb;
     border: 1px solid #c8d8ea;
-    border-radius: 4px;
-    padding: 10px 14px;
     margin-bottom: 20px;
-    display: flex;
-    gap: 40px;
   }
   .info-box .label { font-size: 8pt; color: #666; text-transform: uppercase; letter-spacing: 0.05em; }
   .info-box .value { font-size: 11pt; font-weight: bold; color: #1e3a5f; }
@@ -97,32 +93,38 @@
 <body>
 
 <!-- Encabezado -->
-<div class="header">
-  <div>
-    <div class="title">Estado de Cuenta</div>
-    <div style="color:#555; font-size:10pt; margin-top:2px;">{{ conjunto_nombre }}</div>
-  </div>
-  <div class="meta">
-    Fecha de generación: {{ fecha_generacion }}<br/>
-    Apto. / Casa: <strong>{{ estado.numero_apartamento }}</strong>
-  </div>
-</div>
+<table class="header">
+  <tr>
+    <td style="padding-bottom:10px; vertical-align:bottom;">
+      <div class="title">Estado de Cuenta</div>
+      <div style="color:#555; font-size:10pt; margin-top:2px;">{{ conjunto_nombre }}</div>
+    </td>
+    <td style="padding-bottom:10px; vertical-align:bottom; text-align:right;">
+      <div class="meta">
+        Fecha de generaci&#xF3;n: {{ fecha_generacion }}<br/>
+        Apto. / Casa: <strong>{{ estado.numero_apartamento }}</strong>
+      </div>
+    </td>
+  </tr>
+</table>
 
 <!-- Info de la propiedad -->
-<div class="info-box">
-  <div>
-    <div class="label">Conjunto</div>
-    <div class="value">{{ conjunto_nombre }}</div>
-  </div>
-  <div>
-    <div class="label">Propiedad</div>
-    <div class="value">Apto. {{ estado.numero_apartamento }}</div>
-  </div>
-  <div>
-    <div class="label">Saldo a favor disponible</div>
-    <div class="value" style="color:#276749;">{{ fmt_cop(estado.saldo_a_favor_disponible) }}</div>
-  </div>
-</div>
+<table class="info-box">
+  <tr>
+    <td style="padding:10px 14px;">
+      <div class="label">Conjunto</div>
+      <div class="value">{{ conjunto_nombre }}</div>
+    </td>
+    <td style="padding:10px 14px;">
+      <div class="label">Propiedad</div>
+      <div class="value">Apto. {{ estado.numero_apartamento }}</div>
+    </td>
+    <td style="padding:10px 14px;">
+      <div class="label">Saldo a favor disponible</div>
+      <div class="value" style="color:#276749;">{{ fmt_cop(estado.saldo_a_favor_disponible) }}</div>
+    </td>
+  </tr>
+</table>
 
 <!-- Tabla de cuotas -->
 <table>
