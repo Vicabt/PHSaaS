@@ -13,6 +13,8 @@ Rutas:
 
   GET  /panel/sa/suscripciones              -> SA: gestion suscripciones
   POST /panel/sa/suscripciones/{id}/crear   -> SA: crear suscripcion
+  POST /panel/sa/suscripciones/{id}/crear   -> SA: crear suscripcion
+  POST /panel/sa/suscripciones/{id}/editar  -> SA: editar suscripcion (estado, fecha, valor, obs)
   POST /panel/sa/suscripciones/{id}/pagar   -> SA: registrar pago (extiende 1 mes)
   POST /panel/sa/suscripciones/{id}/suspender -> SA: suspender
   POST /panel/sa/suscripciones/{id}/activar -> SA: activar
@@ -466,6 +468,40 @@ def sa_pagar_suscripcion(
         db.close()
 
     return _redir("/panel/sa/suscripciones", success="Pago registrado. Vencimiento extendido 1 mes")
+
+
+@router.post("/panel/sa/suscripciones/{conjunto_id}/editar")
+def sa_editar_suscripcion(
+    conjunto_id: uuid.UUID,
+    request: Request,
+    estado: str = Form(...),
+    fecha_vencimiento: date = Form(...),
+    valor_mensual: Decimal = Form(...),
+    observaciones: str = Form(""),
+):
+    user = _get_user(request)
+    if not user or not user.is_superadmin:
+        return _redir_login()
+
+    db = SessionLocal()
+    try:
+        sus = db.query(SuscripcionSaaS).filter(
+            SuscripcionSaaS.conjunto_id == conjunto_id
+        ).first()
+        if not sus:
+            return _redir("/panel/sa/suscripciones", error="No existe suscripcion para este conjunto")
+        sus.estado = estado
+        sus.fecha_vencimiento = fecha_vencimiento
+        sus.valor_mensual = valor_mensual
+        sus.observaciones = observaciones.strip() or None
+        db.commit()
+    except Exception:
+        db.rollback()
+        return _redir("/panel/sa/suscripciones", error="Error al editar suscripcion")
+    finally:
+        db.close()
+
+    return _redir("/panel/sa/suscripciones", success="Suscripcion actualizada")
 
 
 @router.post("/panel/sa/suscripciones/{conjunto_id}/suspender")

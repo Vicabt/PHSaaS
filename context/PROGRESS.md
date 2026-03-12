@@ -8,7 +8,7 @@
 
 **Fase:** PROYECTO COMPLETO - Todas las fases implementadas y testeadas
 **Versión del documento de planificación:** v2.5
-**Última actualización:** 8 Marzo 2026 — Fase 4 completada: whatsapp_service, integración en generar-cuotas, pago_service y reportes. Nuevo endpoint /internal/notificar-mora. test_fase4.py (7 secciones, todos pasaron).
+**Última actualización:** 11 Marzo 2026 — Panel SA: agregada opción Editar suscripción (estado, fecha vencimiento, valor mensual, observaciones) en `suscripciones.html` + endpoint `POST /panel/sa/suscripciones/{id}/editar` en `views.py`. Servidor local levantado con `.venv` local via `uvicorn` con `--reload`.
 
 ---
 
@@ -23,6 +23,7 @@
 - [x] `dependencies.py` — `get_current_user`, `require_role`, `require_superadmin` operativos con ES256 via JWKS
 - [x] `middleware/tenant.py` — inyección de `conjunto_id` y verificación suscripción. Arreglado para ES256.
 - [x] Deploy inicial en Railway / Uvicorn local operativo — servidor corre en http://localhost:8000
+- [x] Entorno local confirmado: `.venv` en raíz del proyecto, arrancar con `.venv\Scripts\python.exe -m uvicorn ph_saas.main:app --host 0.0.0.0 --port 8000 --reload` (Python de sistema 3.14 no tiene los paquetes)
 - [x] Usuario superadmin creado en Supabase Auth — `vccompany011@email.com` (UUID: `0703bb43-4423-4c4e-8741-036b6995843b`)
 
 ---
@@ -36,6 +37,7 @@
 - [x] Gestión de Suscripciones SaaS — `routers/suscripciones.py`
 - [x] Tests de endpoints — todos pasan: health, auth (login/me/401/422), conjuntos CRUD, suscripciones, propiedades, cleanup → `test_endpoints.py` 7/7 secciones ✅
 - [x] Tests de pantallas HTML — `test_panel.py` 29/29 pruebas ✅ (login, conjuntos SA, suscripciones SA, panel app, logout)
+- [x] Editar suscripción desde panel SA — modal con estado/fecha/valor/observaciones + `POST /panel/sa/suscripciones/{id}/editar`
 - [x] Pantallas HTML basicas con Tailwind
 
 ---
@@ -126,11 +128,11 @@
 | `ph_saas/routers/conjuntos.py` | ✅ Creado (CRUD conjuntos SA, usuarios AD, configuración AD/CO) |
 | `ph_saas/routers/propiedades.py` | ✅ Creado (CRUD propiedades por conjunto) |
 | `ph_saas/routers/suscripciones.py` | ✅ Creado (gestión SaaS SA, ver vencimiento AD) |
-| `ph_saas/routers/views.py` | ✅ Creado (pantallas HTML — login, SA, AD) |
+| `ph_saas/routers/views.py` | ✅ Actualizado — agregado `POST /panel/sa/suscripciones/{id}/editar` |
 | `ph_saas/templates/base.html` | ✅ Creado (sidebar Tailwind + Alpine.js) |
 | `ph_saas/templates/login.html` | ✅ Creado |
 | `ph_saas/templates/sa/conjuntos.html` | ✅ Creado |
-| `ph_saas/templates/sa/suscripciones.html` | ✅ Creado |
+| `ph_saas/templates/sa/suscripciones.html` | ✅ Actualizado — botón Editar + modal edición suscripción |
 | `ph_saas/templates/app/propiedades.html` | ✅ Creado |
 | `test_fase2.py` | ✅ Suite de tests Fase 2 — 11 secciones, todos pasaron |
 | `ph_saas/schemas/cartera.py` | ✅ Creado (ResumenCartera, EstadoCuentaPropiedad, CarteraAntiguedadItem) |

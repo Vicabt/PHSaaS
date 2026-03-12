@@ -144,6 +144,7 @@
 | POST | `/panel/sa/conjuntos/{id}/eliminar` | SA | Soft delete conjunto |
 | GET | `/panel/sa/suscripciones` | SA | Gestión suscripciones |
 | POST | `/panel/sa/suscripciones/{id}/crear` | SA | Crear suscripción |
+| POST | `/panel/sa/suscripciones/{id}/editar` | SA | Editar suscripción (estado, fecha, valor, observaciones) |
 | POST | `/panel/sa/suscripciones/{id}/pagar` | SA | +1 mes vencimiento |
 | POST | `/panel/sa/suscripciones/{id}/suspender` | SA | Suspender |
 | POST | `/panel/sa/suscripciones/{id}/activar` | SA | Activar |

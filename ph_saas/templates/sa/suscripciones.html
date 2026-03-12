@@ -10,8 +10,22 @@
   pagarId: null,
   suspenderId: null,
   activarId: null,
+  editId: null,
+  editNombre: '',
+  editEstado: 'Activo',
+  editFecha: '',
+  editValor: '',
+  editObs: '',
   openCreate(id, nombre) { this.createId = id; this.createNombre = nombre; },
   openPagar(id) { this.pagarId = id; },
+  openEdit(id, nombre, estado, fecha, valor, obs) {
+    this.editId = id;
+    this.editNombre = nombre;
+    this.editEstado = estado;
+    this.editFecha = fecha;
+    this.editValor = valor;
+    this.editObs = obs;
+  },
 }">
 
   <!-- Toolbar -->
@@ -69,6 +83,10 @@
                 <button @click="openPagar('{{ c.id }}')"
                         class="text-green-600 hover:text-green-800 text-xs font-medium">
                   +1 Mes
+                </button>
+                <button @click="openEdit('{{ c.id }}', '{{ c.nombre|e }}', '{{ sus.estado }}', '{{ sus.fecha_vencimiento.strftime('%Y-%m-%d') if sus.fecha_vencimiento else '' }}', '{{ sus.valor_mensual }}', '{{ (sus.observaciones or '')|e }}')"
+                        class="text-indigo-600 hover:text-indigo-800 text-xs font-medium">
+                  Editar
                 </button>
                 {% if sus.estado != 'Suspendido' %}
                 <form method="post" action="/panel/sa/suscripciones/{{ c.id }}/suspender" class="inline">
@@ -169,6 +187,54 @@
           <button type="submit"
                   class="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition">
             Confirmar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- Modal Editar suscripcion -->
+  <div x-show="editId !== null" x-cloak
+       class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4"
+       @keydown.escape.window="editId = null">
+    <div @click.outside="editId = null"
+         class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+      <h2 class="text-base font-semibold text-gray-800 mb-1">Editar suscripcion</h2>
+      <p class="text-sm text-gray-500 mb-4" x-text="editNombre"></p>
+      <form method="post" :action="`/panel/sa/suscripciones/${editId}/editar`" class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Estado</label>
+          <select name="estado" :value="editEstado" x-model="editEstado"
+                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="Activo">Activo</option>
+            <option value="Suspendido">Suspendido</option>
+            <option value="Vencido">Vencido</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Fecha vencimiento *</label>
+          <input name="fecha_vencimiento" type="date" required x-model="editFecha"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Valor mensual *</label>
+          <input name="valor_mensual" type="number" step="0.01" min="0" required x-model="editValor"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Observaciones</label>
+          <textarea name="observaciones" rows="2" x-model="editObs"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="button" @click="editId = null"
+                  class="flex-1 border border-gray-300 text-gray-600 rounded-lg px-4 py-2 text-sm hover:bg-gray-50 transition">
+            Cancelar
+          </button>
+          <button type="submit"
+                  class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2 text-sm font-medium transition">
+            Guardar
           </button>
         </div>
       </form>
