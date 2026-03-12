@@ -1,2 +1,5 @@
 [phases.setup]
 aptPkgs = ["libcairo2-dev", "libxcb1-dev"]
+
+[variables]
+CPATH = "/usr/include"
